@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Search, Plus, Edit2, Trash2, AlertTriangle } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 
 import {
     Table,
@@ -22,6 +23,7 @@ import { useCategories } from "@/features/categorias/hooks";
 export default function UsuariosPage() {
     const { usuarios, add, update, remove } = useUsuarios();
     const { categories } = useCategories();
+    const { toast } = useToast();
     const activeCategories = categories.filter(c => c.activa);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
@@ -30,6 +32,7 @@ export default function UsuariosPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<"create" | "edit" | "delete">("create");
     const [currentUser, setCurrentUser] = useState<Partial<Usuario>>({});
+    const [formError, setFormError] = useState<string | null>(null);;
 
     // Filtering logic
     const filteredUsers = useMemo(() => {
@@ -64,39 +67,55 @@ export default function UsuariosPage() {
     const closeModal = () => {
         setIsModalOpen(false);
         setCurrentUser({});
+        setFormError(null);
     };
 
     const handleSave = async (e: React.FormEvent) => {
-        e.preventDefault()
+        e.preventDefault();
+        setFormError(null);
 
-        if (modalMode === "create") {
-            await add({
-                nombre: currentUser.nombre!,
-                cedula: currentUser.cedula!,
-                direccion: currentUser.direccion!,
-                telefono: currentUser.telefono,
-                categoria_id: currentUser.categoria_id!,
-                estado: currentUser.estado ?? "activo",
-            })
-        } else if (modalMode === "edit" && currentUser.id) {
-            await update(currentUser.id, {
-                nombre: currentUser.nombre,
-                cedula: currentUser.cedula,
-                direccion: currentUser.direccion,
-                telefono: currentUser.telefono,
-                categoria_id: currentUser.categoria_id,
-                estado: currentUser.estado,
-            })
+        try {
+            if (modalMode === "create") {
+                await add({
+                    nombre: currentUser.nombre!,
+                    cedula: currentUser.cedula!,
+                    direccion: currentUser.direccion!,
+                    telefono: currentUser.telefono,
+                    categoria_id: currentUser.categoria_id!,
+                    estado: currentUser.estado ?? "activo",
+                });
+                toast({ type: "success", title: "Usuario creado", description: `${currentUser.nombre} fue agregado exitosamente.` });
+            } else if (modalMode === "edit" && currentUser.id) {
+                await update(currentUser.id, {
+                    nombre: currentUser.nombre,
+                    cedula: currentUser.cedula,
+                    direccion: currentUser.direccion,
+                    telefono: currentUser.telefono,
+                    categoria_id: currentUser.categoria_id,
+                    estado: currentUser.estado,
+                });
+                toast({ type: "success", title: "Usuario actualizado", description: "Los cambios fueron guardados." });
+            }
+            closeModal();
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Ocurrió un error inesperado.";
+            setFormError(msg);
+            toast({ type: "error", title: "Error al guardar", description: msg });
         }
-
-        closeModal()
     }
 
     const handleDelete = async () => {
-        if (currentUser.id) {
-            await remove(currentUser.id)
+        try {
+            if (currentUser.id) {
+                await remove(currentUser.id);
+            }
+            toast({ type: "success", title: "Usuario eliminado", description: `"${currentUser.nombre}" fue eliminado.` });
+            closeModal();
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Error al eliminar el usuario.";
+            toast({ type: "error", title: "Error al eliminar", description: msg });
+            closeModal();
         }
-        closeModal()
     }
 
     return (
@@ -244,6 +263,13 @@ export default function UsuariosPage() {
                     </div>
                 ) : (
                     <form onSubmit={handleSave} className="space-y-4">
+                        {/* Banner de error inline */}
+                        {formError && (
+                            <div className="flex items-start gap-3 p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-800">
+                                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-rose-500" />
+                                <p className="text-sm font-medium">{formError}</p>
+                            </div>
+                        )}
                         <div className="space-y-4 max-h-[60vh] overflow-y-auto px-1">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Nombre Completo</label>

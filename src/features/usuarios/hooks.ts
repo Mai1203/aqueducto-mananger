@@ -22,8 +22,9 @@ export function useUsuarios() {
     fetchUsuarios()
   }, [])
 
+  // Cada función propaga el error para que el componente lo capture y lo muestre
   const add = async (usuario: Omit<Usuario, "id">) => {
-    await createUsuario(usuario)
+    await createUsuario(usuario) // throws si hay error (e.g. cédula duplicada)
     fetchUsuarios()
   }
 

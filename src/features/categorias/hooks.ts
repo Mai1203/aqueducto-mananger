@@ -22,8 +22,9 @@ export function useCategories() {
     fetchCategories()
   }, [])
 
+  // Las funciones propagan el error para que el componente lo capture y lo muestre
   const add = async (category: Omit<Category, "id">) => {
-    await createCategory(category)
+    await createCategory(category) // throws si hay error
     fetchCategories()
   }
 

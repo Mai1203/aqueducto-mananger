@@ -10,6 +10,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Plus, Edit2, Trash2, AlertTriangle } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,9 +21,11 @@ import { Category } from "@/features/categorias/types";
 
 export default function CategoriasPage() {
     const { categories, add, update, remove } = useCategories();
+    const { toast } = useToast();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<"create" | "edit" | "delete">("create");
     const [currentCategory, setCurrentCategory] = useState<Partial<Category>>({});
+    const [formError, setFormError] = useState<string | null>(null);
 
     // Abrir modal según la acción
     const openModal = (mode: "create" | "edit" | "delete", category?: Category) => {
@@ -38,35 +41,50 @@ export default function CategoriasPage() {
     const closeModal = () => {
         setIsModalOpen(false);
         setCurrentCategory({});
+        setFormError(null);
     };
 
     const handleSave = async (e: React.FormEvent) => {
-        e.preventDefault()
+        e.preventDefault();
+        setFormError(null);
 
-        if (modalMode === "create") {
-            await add({
-            nombre_categoria: currentCategory.nombre_categoria!,
-            valor_mensual: Number(currentCategory.valor_mensual),
-            descripcion: currentCategory.descripcion!,
-            activa: currentCategory.activa ?? true,
-            })
-        } else if (modalMode === "edit" && currentCategory.id) {
-            await update(currentCategory.id, {
-            nombre_categoria: currentCategory.nombre_categoria,
-            valor_mensual: Number(currentCategory.valor_mensual),
-            activa: currentCategory.activa,
-            })
+        try {
+            if (modalMode === "create") {
+                await add({
+                    nombre_categoria: currentCategory.nombre_categoria!,
+                    valor_mensual: Number(currentCategory.valor_mensual),
+                    descripcion: currentCategory.descripcion!,
+                    activa: currentCategory.activa ?? true,
+                });
+                toast({ type: "success", title: "Categoría creada", description: `"${currentCategory.nombre_categoria}" fue agregada exitosamente.` });
+            } else if (modalMode === "edit" && currentCategory.id) {
+                await update(currentCategory.id, {
+                    nombre_categoria: currentCategory.nombre_categoria,
+                    valor_mensual: Number(currentCategory.valor_mensual),
+                    activa: currentCategory.activa,
+                });
+                toast({ type: "success", title: "Categoría actualizada", description: "Los cambios fueron guardados." });
+            }
+            closeModal();
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Ocurrió un error inesperado.";
+            setFormError(msg);
+            toast({ type: "error", title: "Error al guardar", description: msg });
         }
-
-        closeModal()
     }
 
     const handleDelete = async () => {
-        if (currentCategory.id) {
-            await remove(currentCategory.id)
+        try {
+            if (currentCategory.id) {
+                await remove(currentCategory.id);
+            }
+            toast({ type: "success", title: "Categoría eliminada", description: `"${currentCategory.nombre_categoria}" fue eliminada.` });
+            closeModal();
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Error al eliminar la categoría.";
+            toast({ type: "error", title: "Error al eliminar", description: msg });
+            closeModal();
         }
-
-        closeModal()
     }
 
     // Formatear valor para mostrar como moneda
@@ -186,6 +204,13 @@ export default function CategoriasPage() {
                     </div>
                 ) : (
                     <form onSubmit={handleSave} className="space-y-5">
+                        {/* Banner de error inline */}
+                        {formError && (
+                            <div className="flex items-start gap-3 p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-800">
+                                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-rose-500" />
+                                <p className="text-sm font-medium">{formError}</p>
+                            </div>
+                        )}
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
