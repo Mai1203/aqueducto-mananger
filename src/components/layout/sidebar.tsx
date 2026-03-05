@@ -14,8 +14,9 @@ import {
     X,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
 const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -29,6 +30,12 @@ const navigation = [
 
 function SidebarContent({ onClose }: { onClose?: () => void }) {
     const pathname = usePathname();
+    const router = useRouter();
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        router.push("/login");
+    };
 
     return (
         <div className="flex flex-col h-full">
@@ -101,6 +108,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                     </div>
                 </div>
                 <button
+                    onClick={handleLogout}
                     className="group flex w-full items-center px-4 py-2.5 text-sm font-medium rounded-xl text-rose-600 hover:bg-rose-50 transition-colors"
                 >
                     <LogOut className="mr-3 flex-shrink-0 h-4 w-4" />
