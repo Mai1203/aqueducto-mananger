@@ -17,6 +17,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/features/auth/AuthContext";
 
 const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -31,11 +32,14 @@ const navigation = [
 function SidebarContent({ onClose }: { onClose?: () => void }) {
     const pathname = usePathname();
     const router = useRouter();
+    const { user, role, loading } = useAuth();
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
         router.push("/login");
     };
+
+    if (loading) return null;
 
     return (
         <div className="flex flex-col h-full">
@@ -64,7 +68,15 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
             {/* Navigation */}
             <nav className="flex-1 px-4 space-y-0.5 overflow-y-auto">
-                {navigation.map((item) => {
+                {navigation
+                .filter((item) => {
+                    if (role == "cajero") {
+                        // Cajero NO puede ver Categorías ni Facturación
+                        return item.href !== "/categorias" && item.href !== "/facturacion" && item.href !== "/usuarios";
+                    }
+                    return true;
+                })
+                .map((item) => {
                     const isActive =
                         pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}`));
                     return (
@@ -100,11 +112,15 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             <div className="p-4 border-t border-slate-100 mt-auto">
                 <div className="flex items-center gap-3 px-3 py-3 mb-2 rounded-xl bg-slate-50 border border-slate-100">
                     <div className="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center text-sky-700 text-sm font-bold flex-shrink-0">
-                        A
+                        {user?.email?.charAt(0).toUpperCase() ?? "A"}
                     </div>
                     <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 truncate">Administrador</p>
-                        <p className="text-xs text-slate-500 truncate">admin@aguarural.co</p>
+                        <p className="text-sm font-semibold text-slate-900 truncate">
+                            {role === "admin" ? "Administrador" : "Cajero"}
+                        </p>
+                        <p className="text-xs text-slate-500 truncate">
+                            {user?.email}
+                        </p>
                     </div>
                 </div>
                 <button

@@ -23,11 +23,42 @@ export async function middleware(req: NextRequest) {
     }
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
 
-  if (!session && !req.nextUrl.pathname.startsWith('/login')) {
+  const pathname = req.nextUrl.pathname
+
+  // 🔒 1️⃣ Si no hay sesión → login
+  if (!session && !pathname.startsWith('/login')) {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
+  // 🔐 2️⃣ Si hay sesión → validar rol
+  if (session) {
+    const { data: perfil } = await supabase
+      .from('perfiles')
+      .select('rol')
+      .eq('id', session.user.id)
+      .single()
+
+    const role = perfil?.rol
+
+    // 🚫 Rutas solo para admin
+    const adminOnlyRoutes = ['/categorias', '/facturacion', '/usuarios']
+
+    const isAdminRoute = adminOnlyRoutes.some(route =>
+      pathname.startsWith(route)
+    )
+
+    if (isAdminRoute && role !== 'admin') {
+      return NextResponse.redirect(new URL('/', req.url))
+    }
+  }
+
   return res
+}
+
+export const config = {
+  matcher: ['/((?!_next|favicon.ico).*)'],
 }
