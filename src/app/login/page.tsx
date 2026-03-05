@@ -1,43 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabaseClient'
 import { Droplet, Mail, Lock, AlertCircle, ArrowRight, Eye, EyeOff } from 'lucide-react'
 
+import { useLogin } from '@/features/auth/useLogin'
+
 export default function LoginPage() {
+    const { handleLogin, isLoading, error } = useLogin()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
-    const [error, setError] = useState<string | null>(null)
-    const [isLoading, setIsLoading] = useState(false)
-    const router = useRouter()
-
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setIsLoading(true)
-        setError(null)
-
-        try {
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            })
-
-            if (error) {
-                throw error
-            }
-
-            if (data.session) {
-                router.push('/')
-                router.refresh()
-            }
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Error al iniciar sesión. Por favor, verifica tus credenciales.')
-        } finally {
-            setIsLoading(false)
-        }
-    }
 
     return (
         <div className="min-h-screen grid lg:grid-cols-2">
@@ -87,7 +59,15 @@ export default function LoginPage() {
                         </p>
                     </div>
 
-                    <form onSubmit={handleLogin} className="space-y-6 mt-8">
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault()
+                            if (!isLoading) {
+                                handleLogin(email, password)
+                            }
+                        }}
+                        className="space-y-6 mt-8"
+                    >
                         {error && (
                             <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 text-rose-600 animate-in fade-in duration-300">
                                 <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
