@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Search, UserCircle, CheckCircle2, X, CreditCard, Banknote, Receipt, ChevronRight, AlertCircle } from "lucide-react"
+import { Search, UserCircle, CheckCircle2, X, CreditCard, Banknote, Receipt, ChevronRight } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -266,8 +266,8 @@ export default function PagosPage() {
                                                     type="button"
                                                     onClick={() => setMetodo(m)}
                                                     className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg border-2 text-sm font-medium transition-all ${metodo === m
-                                                            ? "border-emerald-400 bg-emerald-50 text-emerald-700"
-                                                            : "border-slate-200 text-slate-500 hover:border-slate-300"
+                                                        ? "border-emerald-400 bg-emerald-50 text-emerald-700"
+                                                        : "border-slate-200 text-slate-500 hover:border-slate-300"
                                                         }`}
                                                 >
                                                     {m === "efectivo"
