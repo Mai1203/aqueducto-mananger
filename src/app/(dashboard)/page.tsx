@@ -1,11 +1,13 @@
 "use client"
 
-import { MetricCard } from "@/components/ui/metric-card";
 import { DollarSign, Users, AlertCircle, FileText } from "lucide-react";
+
+import { MetricCard } from "@/components/ui/metric-card";
+import { PagosChart } from "@/components/ui/Pagoschart";
 import { useDashboard } from "@/features/dashboard/hooks";
 
 export default function Dashboard() {
-  const { metrics, pagos, loading } = useDashboard()
+  const { metrics, pagos, pagosMensuales, loading } = useDashboard()
 
   if (loading) return <div className="p-8 text-slate-500 text-sm">Cargando dashboard...</div>
 
@@ -51,7 +53,7 @@ export default function Dashboard() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm flex items-center justify-center lg:col-span-4 h-96">
-          <span className="text-slate-400">Gráfico de historial de pagos (Próximamente)</span>
+          <PagosChart data={pagosMensuales} />
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm lg:col-span-3 overflow-hidden">

@@ -2,7 +2,6 @@ import { supabase } from "@/lib/supabaseClient"
 import { DashboardMetrics, UltimoPago } from "./types"
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
-
   const currentMonth = new Date().toISOString().slice(0, 7)
 
   // pagos del mes
@@ -23,9 +22,8 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   const totalPendiente =
     pendientes?.reduce((sum, f) => sum + Number(f.total), 0) || 0
 
-  // facturas vencidas
-  const today = new Date().toISOString()
-
+  // facturas vencidas (pendientes y con fecha_vencimiento pasada)
+  const today = new Date().toISOString().split("T")[0] // solo fecha YYYY-MM-DD
   const { count: facturasVencidas } = await supabase
     .from("facturas")
     .select("*", { count: "exact", head: true })
@@ -42,20 +40,21 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     totalRecaudado,
     totalPendiente,
     facturasVencidas: facturasVencidas || 0,
-    usuariosActivos: usuariosActivos || 0
+    usuariosActivos: usuariosActivos || 0,
   }
 }
 
 export async function getUltimosPagos(): Promise<UltimoPago[]> {
-
   const { data } = await supabase
     .from("pagos")
     .select(`
       id,
       valor_pagado,
       fecha_pago,
-      facturas(
-        clientes(nombre)
+      facturas (
+        clientes (
+          nombre
+        )
       )
     `)
     .order("fecha_pago", { ascending: false })
@@ -67,6 +66,36 @@ export async function getUltimosPagos(): Promise<UltimoPago[]> {
     id: p.id,
     valor_pagado: p.valor_pagado,
     fecha_pago: p.fecha_pago,
-    cliente_nombre: p.facturas?.clientes?.nombre
+    cliente_nombre: p.facturas?.clientes?.nombre ?? "Sin nombre",
+  }))
+}
+
+export async function getPagosMensuales(): Promise<{ mes: string; total: number }[]> {
+  const currentYear = new Date().getFullYear()
+
+  const { data } = await supabase
+    .from("pagos")
+    .select("valor_pagado, fecha_pago")
+    .gte("fecha_pago", `${currentYear}-01-01`)
+    .lte("fecha_pago", `${currentYear}-12-31`)
+    .order("fecha_pago", { ascending: true })
+
+  if (!data) return []
+
+  const mesesNombres = ["Ene", "Feb", "Mar", "Abr", "May", "Jun",
+                        "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+
+  const grouped: Record<number, number> = {}
+
+  data.forEach((p) => {
+    // fecha_pago viene como "YYYY-MM-DD", parseamos sin conversión de zona horaria
+    const mes = parseInt(p.fecha_pago.slice(5, 7)) - 1 // 0-11
+    grouped[mes] = (grouped[mes] || 0) + Number(p.valor_pagado)
+  })
+
+  const mesActual = new Date().getMonth()
+  return Array.from({ length: mesActual + 1 }, (_, i) => ({
+    mes: mesesNombres[i],
+    total: grouped[i] || 0,
   }))
 }
