@@ -12,8 +12,6 @@ export default function Dashboard() {
 
   if (loading) return <Loading />
 
-
-
   return (
     <div className="p-6 md:p-8 space-y-8 max-w-7xl mx-auto">
       <div>
