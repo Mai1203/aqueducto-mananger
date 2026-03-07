@@ -17,6 +17,7 @@ import { useToast } from "@/components/ui/toast";
 
 import { useFacturas } from "@/features/facturacion/hooks";
 import { generarFacturacion } from "@/features/facturacion/services";
+import Loading from "./loading";
 
 type EstadoFiltro = "all" | "pendiente" | "pagado" | "vencida";
 
@@ -86,7 +87,7 @@ export default function FacturacionPage() {
         }
     };
 
-    if (loading) return <div className="p-8 text-slate-500 text-sm">Cargando facturas...</div>;
+    if (loading) return <Loading />;
 
     const mesActual = new Date().toLocaleString("es-CO", { month: "long" });
 

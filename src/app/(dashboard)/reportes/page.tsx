@@ -16,6 +16,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts"
+import Loading from "./loading";
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -57,9 +58,7 @@ export default function ReportesPage() {
     }
   }
 
-  if (loading) {
-    return <div className="p-8 text-slate-500 text-sm">Cargando reportes...</div>
-  }
+  if (loading) return <Loading />;
 
   if (error) {
     return <div className="p-8 text-red-500 text-sm">Error: {error}</div>

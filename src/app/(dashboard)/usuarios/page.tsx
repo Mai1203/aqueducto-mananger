@@ -19,11 +19,13 @@ import { Modal } from "@/components/ui/modal";
 import { useUsuarios } from "@/features/usuarios/hooks";
 import { Usuario } from "@/features/usuarios/types";
 import { useCategories } from "@/features/categorias/hooks";
+import Loading from "./loading";
 
 export default function UsuariosPage() {
-    const { usuarios, add, update, remove } = useUsuarios();
+    const { usuarios, loading, add, update, remove } = useUsuarios();
     const { categories } = useCategories();
     const { toast } = useToast();
+
     const activeCategories = categories.filter(c => c.activa);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
@@ -47,6 +49,9 @@ export default function UsuariosPage() {
             return matchesSearch && matchesStatus;
         });
     }, [usuarios, searchTerm, statusFilter]);
+
+    if (loading) return <Loading />;
+
 
     const getCategoryName = (categoria_id: string) => {
         const category = categories.find(c => c.id === categoria_id);

@@ -19,13 +19,19 @@ import { Modal } from "@/components/ui/modal";
 import { useCategories } from "@/features/categorias/hooks";
 import { Category } from "@/features/categorias/types";
 
+import Loading from "./loading";
+
 export default function CategoriasPage() {
-    const { categories, add, update, remove } = useCategories();
+    const { categories, loading, add, update, remove } = useCategories();
     const { toast } = useToast();
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<"create" | "edit" | "delete">("create");
     const [currentCategory, setCurrentCategory] = useState<Partial<Category>>({});
     const [formError, setFormError] = useState<string | null>(null);
+
+    if (loading) return <Loading />;
+
 
     // Abrir modal según la acción
     const openModal = (mode: "create" | "edit" | "delete", category?: Category) => {

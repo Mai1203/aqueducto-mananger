@@ -5,11 +5,14 @@ import { DollarSign, Users, AlertCircle, FileText } from "lucide-react";
 import { MetricCard } from "@/components/ui/metric-card";
 import { PagosChart } from "@/components/ui/Pagoschart";
 import { useDashboard } from "@/features/dashboard/hooks";
+import Loading from "./loading";
 
 export default function Dashboard() {
   const { metrics, pagos, pagosMensuales, loading } = useDashboard()
 
-  if (loading) return <div className="p-8 text-slate-500 text-sm">Cargando dashboard...</div>
+  if (loading) return <Loading />
+
+
 
   return (
     <div className="p-6 md:p-8 space-y-8 max-w-7xl mx-auto">
