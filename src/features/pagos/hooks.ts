@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { buscarClientes, obtenerDeudaCliente, registrarPago } from "./services"
+import { buscarClientes, obtenerDeudaCliente, registrarPago, registrarPagoAdelantado } from "./services"
 import { ClienteBusqueda, FacturaPendiente } from "./types"
 
 export function usePagos() {
@@ -64,6 +64,27 @@ export function usePagos() {
         setDeuda(data.deuda_total || 0)
     }
 
+    const pagarAdelantado = async (
+        meses: number,
+        metodo: "efectivo" | "transferencia",
+        usuarioId: string
+    ) => {
+        if (!clienteSeleccionado) return
+
+        await registrarPagoAdelantado({
+            cliente_id: clienteSeleccionado.id,
+            meses,
+            metodo_pago: metodo,
+            registrado_por: usuarioId,
+        })
+
+        // refrescar deuda
+        const data = await obtenerDeudaCliente(clienteSeleccionado.id)
+
+        setFacturas(data.facturas || [])
+        setDeuda(data.deuda_total || 0)
+    }
+
 
     return {
         clientes,
@@ -73,6 +94,7 @@ export function usePagos() {
         buscar,
         seleccionarCliente,
         pagar,
+        pagarAdelantado,
     }
 
 }

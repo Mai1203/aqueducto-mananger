@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Search, UserCircle, CheckCircle2, X, CreditCard, Banknote, Receipt, ChevronRight } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Search, UserCircle, CheckCircle2, X, CreditCard, Banknote, Receipt, ChevronRight, CalendarDays, History } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -19,7 +19,8 @@ export default function PagosPage() {
         facturas,
         buscar,
         seleccionarCliente,
-        pagar
+        pagar,
+        pagarAdelantado
     } = usePagos()
 
     const { user } = useAuth()
@@ -28,12 +29,24 @@ export default function PagosPage() {
     const [query, setQuery] = useState("")
     const [monto, setMonto] = useState(0)
     const [metodo, setMetodo] = useState<"efectivo" | "transferencia">("efectivo")
+    const [isAdelantado, setIsAdelantado] = useState(false)
+    const [meses, setMeses] = useState(1)
+
+    // Efecto para calcular monto si es adelantado
+    useEffect(() => {
+        if (isAdelantado && clienteSeleccionado?.valor_mensual) {
+            setMonto(clienteSeleccionado.valor_mensual * meses)
+        }
+    }, [isAdelantado, meses, clienteSeleccionado])
 
     // BUG FIX: al seleccionar cliente, limpiar búsqueda para cerrar el dropdown
     const handleSeleccionarCliente = (c: typeof clientes[0]) => {
         seleccionarCliente(c)
         setQuery("")
         buscar("")
+        setIsAdelantado(false)
+        setMeses(1)
+        setMonto(0)
     }
 
     const handleLimpiarCliente = () => {
@@ -41,6 +54,7 @@ export default function PagosPage() {
         setQuery("")
         buscar("")
         setMonto(0)
+        setIsAdelantado(false)
     }
 
     return (
@@ -153,14 +167,23 @@ export default function PagosPage() {
                                 </div>
 
                                 {/* Deuda total destacada */}
-                                <div className="mt-5 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
-                                        Deuda Total
-                                    </p>
-                                    <p className="text-3xl font-bold text-slate-900">
-                                        ${deuda.toLocaleString()}
-                                        <span className="text-base font-normal text-slate-400 ml-1">COP</span>
-                                    </p>
+                                <div className="mt-5 grid grid-cols-2 gap-3">
+                                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                            Deuda Pendiente
+                                        </p>
+                                        <p className="text-2xl font-bold text-slate-900">
+                                            ${deuda.toLocaleString()}
+                                        </p>
+                                    </div>
+                                    <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100/50">
+                                        <p className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-wider mb-1">
+                                            Tarifa Mensual
+                                        </p>
+                                        <p className="text-2xl font-bold text-emerald-700">
+                                            ${(clienteSeleccionado.valor_mensual || 0).toLocaleString()}
+                                        </p>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
@@ -178,9 +201,14 @@ export default function PagosPage() {
                             </div>
                             <CardContent className="p-0">
                                 {facturas.length === 0 ? (
-                                    <p className="text-sm text-slate-400 text-center py-8">
-                                        Sin facturas pendientes
-                                    </p>
+                                    <div className="flex flex-col items-center justify-center py-8 text-center px-4">
+                                        <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center mb-2">
+                                            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                                        </div>
+                                        <p className="text-sm text-slate-500 font-medium">
+                                            ¡Al día! No hay deudas pendientes
+                                        </p>
+                                    </div>
                                 ) : (
                                     <div className="divide-y divide-slate-100">
                                         {facturas.map((f) => (
@@ -209,50 +237,110 @@ export default function PagosPage() {
 
                     {/* Columna derecha: Formulario de pago */}
                     <div className="md:col-span-2">
-                        <Card className="border border-slate-200 shadow-sm sticky top-6">
-                            <div className="px-5 py-4 border-b border-slate-100">
+                        <Card className="border border-slate-200 shadow-sm sticky top-6 overflow-hidden">
+                            <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                                 <h3 className="text-sm font-semibold text-slate-700">Registrar pago</h3>
+                                <div className="flex gap-1 p-1 bg-slate-200/50 rounded-lg">
+                                    <button
+                                        onClick={() => { setIsAdelantado(false); setMonto(0); }}
+                                        className={`px-2 py-1 text-[10px] font-bold uppercase tracking-tight rounded-md transition-all ${!isAdelantado ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                                    >
+                                        Deuda
+                                    </button>
+                                    <button
+                                        onClick={() => setIsAdelantado(true)}
+                                        className={`px-2 py-1 text-[10px] font-bold uppercase tracking-tight rounded-md transition-all ${isAdelantado ? "bg-emerald-500 text-white shadow-sm shadow-emerald-200" : "text-slate-500 hover:text-slate-700"}`}
+                                    >
+                                        Adelantado
+                                    </button>
+                                </div>
                             </div>
                             <CardContent className="p-5">
                                 <form
                                     className="space-y-4"
                                     onSubmit={async (e) => {
                                         e.preventDefault()
-                                        if (!facturas.length || !monto) return
+                                        if (!isAdelantado && (!facturas.length || !monto)) return
+                                        if (isAdelantado && !meses) return
 
                                         try {
-                                            await pagar(facturas[0].id, monto, metodo, user.id)
-                                            toast({
-                                                type: "success",
-                                                title: "Pago registrado",
-                                                description: `Se ha registrado el pago de $${monto.toLocaleString()} exitosamente.`
-                                            })
+                                            if (isAdelantado) {
+                                                await pagarAdelantado(meses, metodo, user.id)
+                                                toast({
+                                                    type: "success",
+                                                    title: "Pago por adelantado registrado",
+                                                    description: `Se han pagado ${meses} meses por un total de $${monto.toLocaleString()} exitosamente.`
+                                                })
+                                            } else {
+                                                await pagar(facturas[0].id, monto, metodo, user.id)
+                                                toast({
+                                                    type: "success",
+                                                    title: "Pago registrado",
+                                                    description: `Se ha registrado el pago de $${monto.toLocaleString()} exitosamente.`
+                                                })
+                                            }
                                             setMonto(0)
+                                            setIsAdelantado(false)
+                                            setMeses(1)
                                         } catch (error) {
                                             toast({
                                                 type: "error",
-                                                title: "Error al pagar",
-                                                description: error instanceof Error ? error.message : "No se pudo registrar el pago."
+                                                title: "Error al registrar pago",
+                                                description: error instanceof Error ? error.message : "Ocurrió un error inesperado."
                                             })
                                         }
                                     }}
                                 >
-                                    {/* Monto */}
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
-                                            Monto
-                                        </label>
-                                        <div className="relative">
-                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">$</span>
-                                            <input
-                                                type="number"
-                                                value={monto || ""}
-                                                placeholder="0"
-                                                onChange={(e) => setMonto(Number(e.target.value))}
-                                                className="w-full pl-7 pr-4 py-2.5 border-2 border-slate-200 rounded-lg text-slate-900 font-semibold focus:outline-none focus:border-emerald-400 transition-colors"
-                                            />
+                                    {/* Opción Adelantado: Selección de Meses */}
+                                    {isAdelantado ? (
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
+                                                ¿Cuántos meses desea pagar?
+                                            </label>
+                                            <div className="relative">
+                                                <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-500 w-4 h-4" />
+                                                <select
+                                                    value={meses}
+                                                    onChange={(e) => setMeses(Number(e.target.value))}
+                                                    className="w-full pl-10 pr-4 py-2.5 border-2 border-emerald-100 rounded-lg text-slate-900 font-semibold focus:outline-none focus:border-emerald-400 bg-emerald-50/30 transition-colors appearance-none"
+                                                >
+                                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
+                                                        <option key={m} value={m}>{m} {m === 1 ? 'mes' : 'meses'}</option>
+                                                    ))}
+                                                </select>
+                                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                                    <ChevronRight className="w-4 h-4 text-emerald-400 rotate-90" />
+                                                </div>
+                                            </div>
+                                            <div className="mt-4 p-3 bg-emerald-50 rounded-lg border border-emerald-100 flex items-center justify-between">
+                                                <span className="text-xs font-medium text-emerald-700">Total a pagar:</span>
+                                                <span className="text-lg font-bold text-emerald-700">${monto.toLocaleString()}</span>
+                                            </div>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        /* Monto Manual */
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
+                                                Monto a pagar
+                                            </label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">$</span>
+                                                <input
+                                                    type="number"
+                                                    value={monto || ""}
+                                                    placeholder="0"
+                                                    onChange={(e) => setMonto(Number(e.target.value))}
+                                                    className="w-full pl-7 pr-4 py-2.5 border-2 border-slate-200 rounded-lg text-slate-900 font-semibold focus:outline-none focus:border-emerald-400 transition-colors"
+                                                />
+                                            </div>
+                                            {monto > 0 && (
+                                                <div className="mt-2 text-[10px] text-slate-400 font-medium flex items-center gap-1">
+                                                    <History className="w-3 h-3" />
+                                                    Se aplicará a la factura más antigua.
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {/* Método — toggle visual */}
                                     <div>
@@ -280,28 +368,20 @@ export default function PagosPage() {
                                         </div>
                                     </div>
 
-                                    {/* Resumen rápido */}
-                                    {monto > 0 && (
-                                        <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-100 text-sm text-emerald-700">
-                                            <p className="font-medium">
-                                                Pago de <span className="font-bold">${monto.toLocaleString()}</span> por {metodo}
-                                            </p>
-                                            {deuda - monto > 0 && (
-                                                <p className="text-xs text-emerald-500 mt-0.5">
-                                                    Saldo restante: ${(deuda - monto).toLocaleString()}
-                                                </p>
-                                            )}
-                                        </div>
-                                    )}
-
                                     <Button
                                         type="submit"
-                                        disabled={!monto || !facturas.length}
-                                        className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 h-11 text-sm font-semibold"
+                                        disabled={(!isAdelantado && (!monto || !facturas.length)) || (isAdelantado && !monto)}
+                                        className={`w-full h-11 text-sm font-semibold transition-all ${isAdelantado ? 'bg-emerald-500 hover:bg-emerald-600 shadow-sm shadow-emerald-200' : 'bg-slate-900 hover:bg-slate-800'}`}
                                     >
                                         <CheckCircle2 className="w-4 h-4 mr-2" />
-                                        Confirmar Pago
+                                        {isAdelantado ? `Pagar ${meses} meses` : 'Confirmar Pago'}
                                     </Button>
+
+                                    {isAdelantado && (
+                                        <p className="text-[10px] text-center text-slate-400 italic">
+                                            * Se generarán automáticamente las facturas de los próximos periodos.
+                                        </p>
+                                    )}
                                 </form>
                             </CardContent>
                         </Card>

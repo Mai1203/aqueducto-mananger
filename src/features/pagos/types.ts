@@ -3,6 +3,7 @@ export interface ClienteBusqueda {
   nombre: string
   cedula: string
   direccion: string
+  valor_mensual?: number
 }
 
 export interface FacturaPendiente {
