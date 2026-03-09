@@ -22,26 +22,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<UserRole>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const loadUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-
-      if (user) {
-        setUser(user)
-
-        const { data: perfil } = await supabase
-          .from('perfiles')
-          .select('rol')
-          .eq('id', user.id)
-          .single()
-
-        setRole(perfil?.rol ?? null)
-      }
-
+  const loadUser = async (supabaseUser: any) => {
+    if (!supabaseUser) {
+      setUser(null)
+      setRole(null)
       setLoading(false)
+      return
     }
 
-    loadUser()
+    setUser(supabaseUser)
+
+    const { data: perfil } = await supabase
+      .from('perfiles')
+      .select('rol')
+      .eq('id', supabaseUser.id)
+      .single()
+
+    setRole(perfil?.rol ?? null)
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    // usuario actual
+    supabase.auth.getUser().then(({ data }) => {
+      loadUser(data.user)
+    })
+
+    // escuchar cambios de sesión
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        await loadUser(session?.user ?? null)
+      }
+    )
+
+    return () => {
+      listener.subscription.unsubscribe()
+    }
   }, [])
 
   return (
