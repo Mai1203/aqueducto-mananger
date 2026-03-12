@@ -32,11 +32,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setUser(supabaseUser)
 
-    const { data: perfil } = await supabase
+    const { data: perfil, error } = await supabase
       .from('perfiles')
       .select('rol')
       .eq('id', supabaseUser.id)
       .single()
+
+    if (error) {
+      console.error("Error cargando perfil:", error)
+    }
 
     setRole(perfil?.rol ?? null)
     setLoading(false)
@@ -44,8 +48,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // usuario actual
-    supabase.auth.getUser().then(({ data }) => {
-      loadUser(data.user)
+    supabase.auth.getSession().then(({ data }) => {
+      loadUser(data.session?.user ?? null)
     })
 
     // escuchar cambios de sesión

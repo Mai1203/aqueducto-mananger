@@ -26,14 +26,15 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           title="Total Recaudado (Mes)"
-          value={`$ ${metrics?.totalRecaudado}`}
+          value={`$ ${metrics?.totalRecaudado?.toLocaleString('es-CO')}`}
           trend="+12%"
           isPositive={true}
           icon={DollarSign}
         />
+
         <MetricCard
           title="Total Pendiente"
-          value={`$ ${metrics?.totalPendiente}`}
+          value={`$ ${metrics?.totalPendiente?.toLocaleString('es-CO')}`}
           trend="-2%"
           isPositive={true}
           icon={AlertCircle}

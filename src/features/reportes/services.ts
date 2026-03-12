@@ -14,7 +14,7 @@ export async function getIngresosMensuales(): Promise<IngresoMensual[]> {
   // Total facturado por mes (proyectado = lo que se debía cobrar)
   const { data: facturas } = await supabase
     .from("facturas")
-    .select("total, periodo")
+    .select("valor_base, periodo")
     .gte("periodo", `${currentYear}-01`)
     .lte("periodo", `${currentYear}-12`)
 
@@ -31,7 +31,7 @@ export async function getIngresosMensuales(): Promise<IngresoMensual[]> {
 
   facturas?.forEach((f) => {
     const mes = parseInt(f.periodo.slice(5, 7)) - 1
-    proyectado[mes] = (proyectado[mes] || 0) + Number(f.total)
+    proyectado[mes] = (proyectado[mes] || 0) + Number(f.valor_base)
   })
 
   const mesActual = new Date().getMonth()
