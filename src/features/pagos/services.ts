@@ -16,7 +16,10 @@ export async function buscarClientes(query: string) {
     .or(`nombre.ilike.%${query}%,cedula.ilike.%${query}%`)
     .limit(10)
 
-  if (error) throw error
+  if (error) {
+    console.error("Error buscando clientes:", error)
+    throw new Error("No se pudo realizar la búsqueda de clientes.")
+  }
 
   return data.map(c => ({
     ...c,
@@ -33,7 +36,10 @@ export async function obtenerDeudaCliente(clienteId: string) {
     .eq("cliente_id", clienteId)
     .gt("saldo_pendiente", 0) // solo facturas con saldo
 
-  if (error) throw error
+  if (error) {
+    console.error("Error obteniendo deuda del cliente:", error)
+    throw new Error("No se pudo cargar la información de deuda del cliente.")
+  }
 
   const deuda_total = data.reduce(
     (sum, f) => sum + Number(f.saldo_pendiente),
@@ -63,7 +69,10 @@ export async function registrarPago(input: {
       registrado_por: input.registrado_por,
     })
 
-  if (error) throw error
+  if (error) {
+    console.error("Error registrando pago:", error)
+    throw new Error("No se pudo registrar el pago. Por favor intente de nuevo.")
+  }
 
   return data
 }

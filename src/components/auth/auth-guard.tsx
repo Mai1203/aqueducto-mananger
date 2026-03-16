@@ -11,12 +11,24 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         const checkAuth = async () => {
-            const { data: { session } } = await supabase.auth.getSession()
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession()
+                
+                if (error) throw error;
 
-            if (!session && pathname !== '/login') {
-                router.push('/login')
-            } else {
-                setIsLoading(false)
+                if (!session && pathname !== '/login') {
+                    router.push('/login')
+                } else {
+                    setIsLoading(false)
+                }
+            } catch (error) {
+                console.error("Error en checkAuth:", error)
+                // En caso de error, si no estamos en login, redirigimos
+                if (pathname !== '/login') {
+                    router.push('/login')
+                } else {
+                    setIsLoading(false)
+                }
             }
         }
 

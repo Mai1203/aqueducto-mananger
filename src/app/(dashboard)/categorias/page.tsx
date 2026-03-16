@@ -17,12 +17,14 @@ import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 
 import { useCategories } from "@/features/categorias/hooks";
+import { useAuth } from "@/features/auth/AuthContext";
 import { Category } from "@/features/categorias/types";
 
 import Loading from "./loading";
 
 export default function CategoriasPage() {
     const { categories, loading, add, update, remove } = useCategories();
+    const { user } = useAuth();
     const { toast } = useToast();
 
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -31,7 +33,6 @@ export default function CategoriasPage() {
     const [formError, setFormError] = useState<string | null>(null);
 
     if (loading) return <Loading />;
-
 
     // Abrir modal según la acción
     const openModal = (mode: "create" | "edit" | "delete", category?: Category) => {

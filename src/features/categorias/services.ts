@@ -7,7 +7,10 @@ export async function getCategories(): Promise<Category[]> {
     .select("*")
     .order("created_at", { ascending: false })
 
-  if (error) throw error
+  if (error) {
+    console.error("Error obteniendo categorías:", error)
+    throw new Error("No se pudieron cargar las categorías.")
+  }
 
   return data as Category[]
 }
@@ -17,7 +20,10 @@ export async function createCategory(category: Omit<Category, "id">) {
     .from("categorias")
     .insert([category])
 
-  if (error) throw error
+  if (error) {
+    console.error("Error creando categoría:", error)
+    throw new Error("No se pudo crear la categoría.")
+  }
 }
 
 export async function updateCategory(id: string, category: Partial<Category>) {
@@ -26,7 +32,10 @@ export async function updateCategory(id: string, category: Partial<Category>) {
     .update(category)
     .eq("id", id)
 
-  if (error) throw error
+  if (error) {
+    console.error("Error actualizando categoría:", error)
+    throw new Error("No se pudo actualizar la categoría.")
+  }
 }
 
 export async function deleteCategory(id: string) {
@@ -35,5 +44,8 @@ export async function deleteCategory(id: string) {
     .delete()
     .eq("id", id)
 
-  if (error) throw error
+  if (error) {
+    console.error("Error eliminando categoría:", error)
+    throw new Error("No se pudo eliminar la categoría.")
+  }
 }

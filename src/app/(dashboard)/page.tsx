@@ -8,9 +8,26 @@ import { useDashboard } from "@/features/dashboard/hooks";
 import Loading from "./loading";
 
 export default function Dashboard() {
-  const { metrics, pagos, pagosMensuales, loading } = useDashboard()
+  const { metrics, pagos, pagosMensuales, loading, error, refetch } = useDashboard()
 
   if (loading) return <Loading />
+
+  if (error) {
+    return (
+      <div className="p-6 md:p-8 flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <div className="bg-red-50 text-red-600 p-4 rounded-lg border border-red-100 max-w-md text-center">
+          <h2 className="font-bold text-lg mb-2">Error al cargar datos</h2>
+          <p>{error}</p>
+        </div>
+        <button 
+          onClick={() => refetch()}
+          className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
+        >
+          Reintentar
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="p-6 md:p-8 space-y-8 max-w-7xl mx-auto">

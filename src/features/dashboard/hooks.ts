@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { getDashboardMetrics, getUltimosPagos, getPagosMensuales } from "./services"
 import { DashboardMetrics, UltimoPago } from "./types"
+import { useAuth } from "@/features/auth/AuthContext"
 
 interface PagosMensuales {
   mes: string
@@ -19,6 +20,8 @@ interface UseDashboardReturn {
 }
 
 export function useDashboard(): UseDashboardReturn {
+  const { user, loading: authLoading } = useAuth()
+
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
   const [pagos, setPagos] = useState<UltimoPago[]>([])
   const [pagosMensuales, setPagosMensuales] = useState<PagosMensuales[]>([])
@@ -28,15 +31,18 @@ export function useDashboard(): UseDashboardReturn {
   const fetchData = async () => {
     setLoading(true)
     setError(null)
+
     try {
       const [metricsData, pagosData, pagosMensualesData] = await Promise.all([
         getDashboardMetrics(),
         getUltimosPagos(),
         getPagosMensuales(),
       ])
+
       setMetrics(metricsData)
       setPagos(pagosData)
       setPagosMensuales(pagosMensualesData)
+
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al cargar el dashboard")
     } finally {
@@ -45,8 +51,12 @@ export function useDashboard(): UseDashboardReturn {
   }
 
   useEffect(() => {
+    if (authLoading) return
+    if (!user) return
+
     fetchData()
-  }, [])
+  }, [user, authLoading])
+  console.log(metrics, pagos, pagosMensuales)
 
   return { metrics, pagos, pagosMensuales, loading, error, refetch: fetchData }
 }

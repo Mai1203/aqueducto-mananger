@@ -23,27 +23,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const loadUser = async (supabaseUser: any) => {
-    if (!supabaseUser) {
-      setUser(null)
-      setRole(null)
+    try {
+      if (!supabaseUser) {
+        setUser(null)
+        setRole(null)
+        return
+      }
+
+      setUser(supabaseUser)
+
+      const { data: perfil, error } = await supabase
+        .from("perfiles")
+        .select("rol")
+        .eq("id", supabaseUser.id)
+        .single()
+
+      if (error) {
+        console.error("Error cargando perfil:", error)
+      }
+
+      setRole(perfil?.rol ?? null)
+    } catch (err) {
+      console.error("Excepción en loadUser:", err)
+    } finally {
       setLoading(false)
-      return
     }
-
-    setUser(supabaseUser)
-
-    const { data: perfil, error } = await supabase
-      .from('perfiles')
-      .select('rol')
-      .eq('id', supabaseUser.id)
-      .single()
-
-    if (error) {
-      console.error("Error cargando perfil:", error)
-    }
-
-    setRole(perfil?.rol ?? null)
-    setLoading(false)
   }
 
   useEffect(() => {
