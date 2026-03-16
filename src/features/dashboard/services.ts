@@ -67,20 +67,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
 }
 
 export async function getUltimosPagos(): Promise<UltimoPago[]> {
-  const { data, error } = await supabase
-    .from("pagos")
-    .select(`
-      id,
-      valor_pagado,
-      fecha_pago,
-      facturas (
-        clientes (
-          nombre
-        )
-      )
-    `)
-    .order("fecha_pago", { ascending: false })
-    .limit(5)
+  const { data, error } = await supabase.rpc("get_ultimos_pagos_por_cliente")
 
   if (error) {
     console.error("Error obteniendo últimos pagos:", error)
@@ -89,12 +76,7 @@ export async function getUltimosPagos(): Promise<UltimoPago[]> {
 
   if (!data) return []
 
-  return data.map((p: any) => ({
-    id: p.id,
-    valor_pagado: p.valor_pagado,
-    fecha_pago: p.fecha_pago,
-    cliente_nombre: p.facturas?.clientes?.nombre ?? "Sin nombre",
-  }))
+  return data
 }
 
 export async function getPagosMensuales(): Promise<{ mes: string; total: number }[]> {
@@ -115,7 +97,7 @@ export async function getPagosMensuales(): Promise<{ mes: string; total: number 
   if (!data) return []
 
   const mesesNombres = ["Ene", "Feb", "Mar", "Abr", "May", "Jun",
-                        "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+    "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
   const grouped: Record<number, number> = {}
 
