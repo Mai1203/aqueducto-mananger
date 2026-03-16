@@ -2,22 +2,31 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
+export async function middleware(request: NextRequest) {
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name) {
-          return req.cookies.get(name)?.value
+        getAll() {
+          return request.cookies.getAll()
         },
-        set(name, value, options) {
-          res.cookies.set(name, value, options)
-        },
-        remove(name, options) {
-          res.cookies.set(name, '', options)
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            request.cookies.set(name, value)
+          )
+          response = NextResponse.next({
+            request,
+          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          )
         },
       },
     }
@@ -27,14 +36,16 @@ export async function middleware(req: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession()
 
-  const pathname = req.nextUrl.pathname
+  const pathname = request.nextUrl.pathname
 
-  // 🔒 1️⃣ Si no hay sesión → login
+  // 1. Redirigir a login si no hay sesión
   if (!session && !pathname.startsWith('/login')) {
-    return NextResponse.redirect(new URL('/login', req.url))
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
   }
 
-  // 🔐 2️⃣ Si hay sesión → validar rol
+  // 2. Validar rol si hay sesión
   if (session) {
     const { data: perfil } = await supabase
       .from('perfiles')
@@ -44,19 +55,24 @@ export async function middleware(req: NextRequest) {
 
     const role = perfil?.rol
 
-    // 🚫 Rutas solo para admin
     const adminOnlyRoutes = ['/categorias', '/facturacion', '/usuarios']
-
-    const isAdminRoute = adminOnlyRoutes.some(route =>
-      pathname.startsWith(route)
-    )
+    const isAdminRoute = adminOnlyRoutes.some(route => pathname.startsWith(route))
 
     if (isAdminRoute && role !== 'admin') {
-      return NextResponse.redirect(new URL('/', req.url))
+      const url = request.nextUrl.clone()
+      url.pathname = '/'
+      return NextResponse.redirect(url)
+    }
+
+    // Si ya tiene sesión e intenta ir al login, redirigir al inicio
+    if (pathname.startsWith('/login')) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/'
+      return NextResponse.redirect(url)
     }
   }
 
-  return res
+  return response
 }
 
 export const config = {

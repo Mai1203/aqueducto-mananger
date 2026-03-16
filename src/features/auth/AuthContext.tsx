@@ -1,7 +1,8 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { useRouter, usePathname } from 'next/navigation'
 
 type UserRole = 'admin' | 'cajero' | null
 
@@ -21,12 +22,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null)
   const [role, setRole] = useState<UserRole>(null)
   const [loading, setLoading] = useState(true)
+  const router = useRouter()
+  const pathname = usePathname()
 
-  const loadUser = async (supabaseUser: any) => {
+  const loadUser = useCallback(async (supabaseUser: any) => {
     try {
       if (!supabaseUser) {
         setUser(null)
         setRole(null)
+        setLoading(false)
+        if (pathname !== '/login') {
+            router.push('/login')
+        }
         return
       }
 
@@ -48,25 +55,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [router, pathname])
 
   useEffect(() => {
-    // usuario actual
+    // Carga inicial
     supabase.auth.getSession().then(({ data }) => {
       loadUser(data.session?.user ?? null)
     })
 
-    // escuchar cambios de sesión
+    // Escuchar cambios de sesión
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        await loadUser(session?.user ?? null)
+      async (event, session) => {
+        console.log("Auth event in Provider:", event)
+        if (event === 'SIGNED_OUT') {
+          setUser(null)
+          setRole(null)
+          setLoading(false)
+          router.push('/login')
+        } else if (session) {
+          loadUser(session.user)
+        } else {
+          setLoading(false)
+        }
       }
     )
 
+    // Escuchar foco de la ventana para validar sesión
+    const handleFocus = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session && pathname !== '/login') {
+        router.push('/login')
+      } else if (session) {
+        loadUser(session.user)
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+
     return () => {
       listener.subscription.unsubscribe()
+      window.removeEventListener('focus', handleFocus)
     }
-  }, [])
+  }, [loadUser, router, pathname])
 
   return (
     <AuthContext.Provider value={{ user, role, loading }}>

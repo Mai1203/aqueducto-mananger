@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Category } from "./types"
 import {
   getCategories,
@@ -6,25 +6,47 @@ import {
   updateCategory,
   deleteCategory,
 } from "./services"
+import { useAuth } from "@/features/auth/AuthContext"
+import { supabase } from "@/lib/supabaseClient"
 
 export function useCategories() {
+  const { user, loading: authLoading } = useAuth()
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
+    if (!user?.id) return
     setLoading(true)
-    const data = await getCategories()
-    setCategories(data)
-    setLoading(false)
-  }
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setLoading(false)
+        return
+      }
+      const data = await getCategories()
+      setCategories(data)
+    } catch (error) {
+      console.error("Error fetching categories:", error)
+    } finally {
+      setLoading(false)
+    }
+  }, [user?.id])
 
   useEffect(() => {
+    if (authLoading) return
+    if (!user?.id) {
+      setLoading(false)
+      return
+    }
     fetchCategories()
-  }, [])
 
-  // Las funciones propagan el error para que el componente lo capture y lo muestre
+    const handleFocus = () => fetchCategories()
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [user?.id, authLoading, fetchCategories])
+
   const add = async (category: Omit<Category, "id">) => {
-    await createCategory(category) // throws si hay error
+    await createCategory(category)
     fetchCategories()
   }
 
