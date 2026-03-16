@@ -31,14 +31,15 @@ export default function PagosPage() {
     const [metodo, setMetodo] = useState<"efectivo" | "transferencia">("efectivo")
     const [isAdelantado, setIsAdelantado] = useState(false)
     const [meses, setMeses] = useState(1)
+    const [adelantadoType, setAdelantadoType] = useState<"meses" | "monto">("meses")
     const [isSubmitting, setIsSubmitting] = useState(false)
 
-    // Efecto para calcular monto si es adelantado
+    // Efecto para calcular monto si es adelantado por meses
     useEffect(() => {
-        if (isAdelantado && clienteSeleccionado?.valor_mensual) {
+        if (isAdelantado && adelantadoType === "meses" && clienteSeleccionado?.valor_mensual) {
             setMonto(clienteSeleccionado.valor_mensual * meses)
         }
-    }, [isAdelantado, meses, clienteSeleccionado])
+    }, [isAdelantado, adelantadoType, meses, clienteSeleccionado])
 
     // BUG FIX: al seleccionar cliente, limpiar búsqueda para cerrar el dropdown
     const handleSeleccionarCliente = (c: typeof clientes[0]) => {
@@ -46,6 +47,7 @@ export default function PagosPage() {
         setQuery("")
         buscar("")
         setIsAdelantado(false)
+        setAdelantadoType("meses")
         setMeses(1)
         setMonto(0)
     }
@@ -262,16 +264,20 @@ export default function PagosPage() {
                                     onSubmit={async (e) => {
                                         e.preventDefault()
                                         if (!isAdelantado && (!facturas.length || !monto)) return
-                                        if (isAdelantado && !meses) return
+                                        if (isAdelantado && adelantadoType === "meses" && !meses) return
+                                        if (isAdelantado && adelantadoType === "monto" && !monto) return
 
                                         setIsSubmitting(true)
                                         try {
                                             if (isAdelantado) {
-                                                await pagarAdelantado(meses, metodo, user.id)
+                                                const params = adelantadoType === "meses" ? { meses } : { monto }
+                                                await pagarAdelantado(params, metodo, user.id)
                                                 toast({
                                                     type: "success",
                                                     title: "Pago por adelantado registrado",
-                                                    description: `Se han pagado ${meses} meses por un total de $${monto.toLocaleString()} exitosamente.`
+                                                    description: adelantadoType === "meses"
+                                                        ? `Se han pagado ${meses} meses exitosamente.`
+                                                        : `Se ha registrado el pago de $${monto.toLocaleString()} exitosamente.`
                                                 })
                                             } else {
                                                 await pagar(facturas[0].id, monto, metodo, user.id)
@@ -284,6 +290,7 @@ export default function PagosPage() {
                                             setMonto(0)
                                             setIsAdelantado(false)
                                             setMeses(1)
+                                            setAdelantadoType("meses")
                                         } catch (error) {
                                             toast({
                                                 type: "error",
@@ -295,8 +302,28 @@ export default function PagosPage() {
                                         }
                                     }}
                                 >
+                                    {/* Opción Adelantado: Selección de Tipo */}
+                                    {isAdelantado && (
+                                        <div className="flex gap-2 p-1 bg-slate-100 rounded-lg mb-4">
+                                            <button
+                                                type="button"
+                                                onClick={() => { setAdelantadoType("meses"); setMonto(0); }}
+                                                className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-tight rounded-md transition-all ${adelantadoType === "meses" ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                                            >
+                                                Por meses
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setAdelantadoType("monto"); setMonto(0); }}
+                                                className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-tight rounded-md transition-all ${adelantadoType === "monto" ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                                            >
+                                                Por valor
+                                            </button>
+                                        </div>
+                                    )}
+
                                     {/* Opción Adelantado: Selección de Meses */}
-                                    {isAdelantado ? (
+                                    {isAdelantado && adelantadoType === "meses" && (
                                         <div>
                                             <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
                                                 ¿Cuántos meses desea pagar?
@@ -321,8 +348,10 @@ export default function PagosPage() {
                                                 <span className="text-lg font-bold text-emerald-700">${monto.toLocaleString()}</span>
                                             </div>
                                         </div>
-                                    ) : (
-                                        /* Monto Manual */
+                                    )}
+
+                                    {/* Monto Manual (Deuda o Adelantado por valor) */}
+                                    {(!isAdelantado || (isAdelantado && adelantadoType === "monto")) && (
                                         <div>
                                             <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
                                                 Monto a pagar
@@ -334,15 +363,13 @@ export default function PagosPage() {
                                                     value={monto || ""}
                                                     placeholder="0"
                                                     onChange={(e) => setMonto(Number(e.target.value))}
-                                                    className="w-full pl-7 pr-4 py-2.5 border-2 border-slate-200 rounded-lg text-slate-900 font-semibold focus:outline-none focus:border-emerald-400 transition-colors"
+                                                    className={`w-full pl-7 pr-4 py-2.5 border-2 rounded-lg text-slate-900 font-semibold focus:outline-none transition-colors ${isAdelantado ? "border-emerald-100 focus:border-emerald-400" : "border-slate-200 focus:border-emerald-400"}`}
                                                 />
                                             </div>
-                                            {monto > 0 && (
-                                                <div className="mt-2 text-[10px] text-slate-400 font-medium flex items-center gap-1">
-                                                    <History className="w-3 h-3" />
-                                                    Se aplicará a la factura más antigua.
-                                                </div>
-                                            )}
+                                            <div className="mt-2 text-[10px] text-slate-400 font-medium flex items-center gap-1">
+                                                <History className="w-3 h-3" />
+                                                Se pagarán primero las facturas pendientes.
+                                            </div>
                                         </div>
                                     )}
 
@@ -385,7 +412,7 @@ export default function PagosPage() {
                                         ) : (
                                             <>
                                                 <CheckCircle2 className="w-4 h-4 mr-2" />
-                                                {isAdelantado ? `Pagar ${meses} meses` : 'Confirmar Pago'}
+                                                {isAdelantado ? (adelantadoType === "meses" ? `Pagar ${meses} meses` : 'Confirmar Pago') : 'Confirmar Pago'}
                                             </>
                                         )}
                                     </Button>

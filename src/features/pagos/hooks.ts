@@ -65,7 +65,7 @@ export function usePagos() {
     }
 
     const pagarAdelantado = async (
-        meses: number,
+        params: { meses?: number; monto?: number },
         metodo: "efectivo" | "transferencia",
         usuarioId: string
     ) => {
@@ -73,7 +73,7 @@ export function usePagos() {
 
         await registrarPagoAdelantado({
             cliente_id: clienteSeleccionado.id,
-            meses,
+            ...params,
             metodo_pago: metodo,
             registrado_por: usuarioId,
         })

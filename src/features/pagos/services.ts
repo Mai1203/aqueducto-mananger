@@ -80,7 +80,8 @@ export async function registrarPago(input: {
 // 🗓️ Registrar pago por adelantado
 export async function registrarPagoAdelantado(input: {
   cliente_id: string
-  meses: number
+  meses?: number
+  monto?: number
   metodo_pago: "efectivo" | "transferencia"
   registrado_por: string
 }) {
@@ -108,50 +109,65 @@ export async function registrarPagoAdelantado(input: {
     throw new Error("El cliente no tiene una tarifa asignada o es $0.")
   }
 
-  let mesesPorProcesar = input.meses
   const results = []
+  let montoDisponible = input.monto || 0
+  let mesesRestantes = input.meses || 0
+  const isPorCuotas = !!input.meses // Si es por número de meses
 
-  // 2. Procesar facturas pendientes existentes primero
+  // 2. Procesar facturas pendientes existentes
+  // Usamos la vista facturas_con_saldo para saber cuánto realmente debe en cada una
   const { data: facturasPendientes, error: pError } = await supabase
-    .from("facturas")
+    .from("facturas_con_saldo")
     .select("*")
     .eq("cliente_id", input.cliente_id)
-    .eq("estado", "pendiente")
+    .gt("saldo_pendiente", 0)
     .order("periodo", { ascending: true })
 
   if (pError) throw pError
 
   if (facturasPendientes && facturasPendientes.length > 0) {
     for (const f of facturasPendientes) {
-      if (mesesPorProcesar <= 0) break
+      if (!isPorCuotas && montoDisponible <= 0) break
+      if (isPorCuotas && mesesRestantes <= 0) break
 
-      // Marcar factura como pagada
-      const { error: fUpdateError } = await supabase
-        .from("facturas")
-        .update({ estado: "pagado" })
-        .eq("id", f.id)
+      let valorAPagar = 0
+      if (isPorCuotas) {
+        valorAPagar = f.saldo_pendiente
+        mesesRestantes--
+      } else {
+        valorAPagar = Math.min(f.saldo_pendiente, montoDisponible)
+        montoDisponible -= valorAPagar
+      }
 
-      if (fUpdateError) throw fUpdateError
+      if (valorAPagar <= 0) continue
 
       // Registrar el pago
       const { error: pInsertError } = await supabase
         .from("pagos")
         .insert({
           factura_id: f.id,
-          valor_pagado: f.total,
+          valor_pagado: valorAPagar,
           metodo_pago: input.metodo_pago,
           registrado_por: input.registrado_por,
         })
 
       if (pInsertError) throw pInsertError
 
-      results.push(f)
-      mesesPorProcesar--
+      // Si se completó el pago de la factura, marcarla como pagada
+      if (valorAPagar >= f.saldo_pendiente) {
+        const { error: fUpdateError } = await supabase
+          .from("facturas")
+          .update({ estado: "pagado" })
+          .eq("id", f.id)
+        if (fUpdateError) throw fUpdateError
+      }
+
+      results.push({ ...f, valor_pagado: valorAPagar })
     }
   }
 
-  // 3. Si aún quedan meses por procesar, crear facturas futuras
-  if (mesesPorProcesar > 0) {
+  // 3. Crear facturas futuras si aún queda saldo o meses
+  if ((isPorCuotas && mesesRestantes > 0) || (!isPorCuotas && montoDisponible > 0)) {
     // Buscar la última factura generada (para saber el periodo de inicio)
     const { data: ultimaFactura } = await supabase
       .from("facturas")
@@ -168,7 +184,7 @@ export async function registrarPagoAdelantado(input: {
     let currentYear = parseInt(startPeriod.split("-")[0])
     let currentMonth = parseInt(startPeriod.split("-")[1])
 
-    for (let i = 0; i < mesesPorProcesar; i++) {
+    while ((isPorCuotas && mesesRestantes > 0) || (!isPorCuotas && montoDisponible > 0)) {
       currentMonth++
       if (currentMonth > 12) {
         currentMonth = 1
@@ -176,7 +192,18 @@ export async function registrarPagoAdelantado(input: {
       }
       const periodo = `${currentYear}-${currentMonth.toString().padStart(2, "0")}`
 
-      // Insertar factura directamente como pagada
+      let valorAPagar = 0
+      if (isPorCuotas) {
+        valorAPagar = valorMensual
+        mesesRestantes--
+      } else {
+        valorAPagar = Math.min(valorMensual, montoDisponible)
+        montoDisponible -= valorAPagar
+      }
+
+      if (valorAPagar <= 0) break
+
+      // Insertar factura
       const { data: factura, error: fError } = await supabase
         .from("facturas")
         .insert({
@@ -184,7 +211,7 @@ export async function registrarPagoAdelantado(input: {
           periodo,
           valor_base: valorMensual,
           total: valorMensual,
-          estado: "pagado",
+          estado: valorAPagar >= valorMensual ? "pagado" : "pendiente",
           fecha_vencimiento: new Date(currentYear, currentMonth - 1, 20).toISOString().split("T")[0]
         })
         .select()
@@ -197,14 +224,14 @@ export async function registrarPagoAdelantado(input: {
         .from("pagos")
         .insert({
           factura_id: factura.id,
-          valor_pagado: valorMensual,
+          valor_pagado: valorAPagar,
           metodo_pago: input.metodo_pago,
           registrado_por: input.registrado_por,
         })
 
       if (pError) throw pError
 
-      results.push(factura)
+      results.push({ ...factura, valor_pagado: valorAPagar })
     }
   }
 
