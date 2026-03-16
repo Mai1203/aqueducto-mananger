@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import {
   getUsuarios,
   createUsuario,
@@ -6,25 +6,47 @@ import {
   deleteUsuario,
 } from "./services"
 import { Usuario } from "./types"
+import { useAuth } from "@/features/auth/AuthContext"
+import { supabase } from "@/lib/supabaseClient"
 
 export function useUsuarios() {
+  const { user, loading: authLoading } = useAuth()
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [loading, setLoading] = useState(true)
 
-  const fetchUsuarios = async () => {
+  const fetchUsuarios = useCallback(async () => {
+    if (!user?.id) return
     setLoading(true)
-    const data = await getUsuarios()
-    setUsuarios(data)
-    setLoading(false)
-  }
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setLoading(false)
+        return
+      }
+      const data = await getUsuarios()
+      setUsuarios(data)
+    } catch (error) {
+      console.error("Error fetching usuarios:", error)
+    } finally {
+      setLoading(false)
+    }
+  }, [user?.id])
 
   useEffect(() => {
+    if (authLoading) return
+    if (!user?.id) {
+      setLoading(false)
+      return
+    }
     fetchUsuarios()
-  }, [])
 
-  // Cada función propaga el error para que el componente lo capture y lo muestre
+    const handleFocus = () => fetchUsuarios()
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [user?.id, authLoading, fetchUsuarios])
+
   const add = async (usuario: Omit<Usuario, "id">) => {
-    await createUsuario(usuario) // throws si hay error (e.g. cédula duplicada)
+    await createUsuario(usuario)
     fetchUsuarios()
   }
 

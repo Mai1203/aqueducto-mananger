@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { getDashboardMetrics, getUltimosPagos, getPagosMensuales } from "./services"
 import { DashboardMetrics, UltimoPago } from "./types"
 import { useAuth } from "@/features/auth/AuthContext"
+import { supabase } from "@/lib/supabaseClient"
 
 interface PagosMensuales {
   mes: string
@@ -28,11 +29,18 @@ export function useDashboard(): UseDashboardReturn {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true)
     setError(null)
 
     try {
+      // Garantizar que la sesión esté lista y el token refrescado
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setLoading(false)
+        return
+      }
+
       const [metricsData, pagosData, pagosMensualesData] = await Promise.all([
         getDashboardMetrics(),
         getUltimosPagos(),
@@ -48,15 +56,27 @@ export function useDashboard(): UseDashboardReturn {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     if (authLoading) return
-    if (!user) return
+    if (!user?.id) {
+      setLoading(false)
+      return
+    }
 
     fetchData()
-  }, [user, authLoading])
-  console.log(metrics, pagos, pagosMensuales)
+
+    // Recuperación al volver a la pestaña
+    const handleFocus = () => {
+      fetchData()
+    }
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [user?.id, authLoading, fetchData])
 
   return { metrics, pagos, pagosMensuales, loading, error, refetch: fetchData }
 }
