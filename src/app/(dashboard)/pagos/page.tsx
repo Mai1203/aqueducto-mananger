@@ -31,6 +31,7 @@ export default function PagosPage() {
     const [metodo, setMetodo] = useState<"efectivo" | "transferencia">("efectivo")
     const [isAdelantado, setIsAdelantado] = useState(false)
     const [meses, setMeses] = useState(1)
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
     // Efecto para calcular monto si es adelantado
     useEffect(() => {
@@ -263,6 +264,7 @@ export default function PagosPage() {
                                         if (!isAdelantado && (!facturas.length || !monto)) return
                                         if (isAdelantado && !meses) return
 
+                                        setIsSubmitting(true)
                                         try {
                                             if (isAdelantado) {
                                                 await pagarAdelantado(meses, metodo, user.id)
@@ -288,6 +290,8 @@ export default function PagosPage() {
                                                 title: "Error al registrar pago",
                                                 description: error instanceof Error ? error.message : "Ocurrió un error inesperado."
                                             })
+                                        } finally {
+                                            setIsSubmitting(false)
                                         }
                                     }}
                                 >
@@ -370,11 +374,20 @@ export default function PagosPage() {
 
                                     <Button
                                         type="submit"
-                                        disabled={(!isAdelantado && (!monto || !facturas.length)) || (isAdelantado && !monto)}
+                                        disabled={isSubmitting || (!isAdelantado && (!monto || !facturas.length)) || (isAdelantado && !monto)}
                                         className={`w-full h-11 text-sm font-semibold transition-all ${isAdelantado ? 'bg-emerald-500 hover:bg-emerald-600 shadow-sm shadow-emerald-200' : 'bg-slate-900 hover:bg-slate-800'}`}
                                     >
-                                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                                        {isAdelantado ? `Pagar ${meses} meses` : 'Confirmar Pago'}
+                                        {isSubmitting ? (
+                                            <>
+                                                <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                                                Procesando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <CheckCircle2 className="w-4 h-4 mr-2" />
+                                                {isAdelantado ? `Pagar ${meses} meses` : 'Confirmar Pago'}
+                                            </>
+                                        )}
                                     </Button>
 
                                     {isAdelantado && (
