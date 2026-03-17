@@ -2,24 +2,26 @@
 
 import { useState, useMemo } from "react";
 import { Search, Zap, Filter } from "lucide-react";
-
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+    Table, TableBody, TableCell, TableHead,
+    TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
-
 import { useFacturas } from "@/features/facturacion/hooks";
 import { generarFacturacion } from "@/features/facturacion/services";
 import Loading from "./loading";
 
-type EstadoFiltro = "all" | "pendiente" | "pagado" | "vencida";
+type EstadoFactura = "pendiente" | "pagado" | "vencida";
+type EstadoFiltro = "all" | EstadoFactura;
+
+// Helper: calcula el estado real de una factura
+function getEstadoReal(inv: { estado: string; fecha_vencimiento: string }): EstadoFactura {
+    if (inv.estado === "pagado") return "pagado";
+    if (new Date(inv.fecha_vencimiento) < new Date()) return "vencida";
+    return "pendiente";
+}
 
 export default function FacturacionPage() {
     const { facturas, loading, reload } = useFacturas();
@@ -29,27 +31,14 @@ export default function FacturacionPage() {
     const [estadoFiltro, setEstadoFiltro] = useState<EstadoFiltro>("all");
     const [generating, setGenerating] = useState(false);
 
-    // Filtrado reactivo
     const facturasFiltradas = useMemo(() => {
         return facturas.filter((inv) => {
-            const isOverdue =
-                inv.estado === "pendiente" &&
-                new Date(inv.fecha_vencimiento) < new Date();
-
-            const estadoReal: EstadoFiltro = inv.estado === "pagado"
-                ? "pagado"
-                : isOverdue
-                    ? "vencida"
-                    : "pendiente";
-
+            const estadoReal = getEstadoReal(inv);
             const matchesSearch =
                 inv.cliente?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 inv.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 inv.periodo.includes(searchTerm);
-
-            const matchesEstado =
-                estadoFiltro === "all" ? true : estadoReal === estadoFiltro;
-
+            const matchesEstado = estadoFiltro === "all" ? true : estadoReal === estadoFiltro;
             return matchesSearch && matchesEstado;
         });
     }, [facturas, searchTerm, estadoFiltro]);
@@ -60,27 +49,13 @@ export default function FacturacionPage() {
             const periodo = new Date().toISOString().slice(0, 7);
             await generarFacturacion(periodo);
             await reload();
-            toast({
-                type: "success",
-                title: "Facturación generada",
-                description: `Las facturas del período ${periodo} fueron creadas exitosamente.`,
-            });
+            toast({ type: "success", title: "Facturación generada", description: `Facturas del período ${periodo} creadas exitosamente.` });
         } catch (err: unknown) {
-            const msg =
-                err instanceof Error ? err.message : "Error al generar la facturación.";
-            // Si ya existen facturas duplicadas, lo informamos sin que sea un error crítico
+            const msg = err instanceof Error ? err.message : "Error al generar la facturación.";
             if (msg.toLowerCase().includes("duplicate")) {
-                toast({
-                    type: "warning",
-                    title: "Facturas ya generadas",
-                    description: "Ya existen facturas para este período. No se crearon duplicados.",
-                });
+                toast({ type: "warning", title: "Facturas ya generadas", description: "Ya existen facturas para este período." });
             } else {
-                toast({
-                    type: "error",
-                    title: "Error al generar",
-                    description: msg,
-                });
+                toast({ type: "error", title: "Error al generar", description: msg });
             }
         } finally {
             setGenerating(false);
@@ -91,17 +66,20 @@ export default function FacturacionPage() {
 
     const mesActual = new Date().toLocaleString("es-CO", { month: "long" });
 
+    // Variantes de estilo por estado
+    const estadoStyles = {
+        pagado:    { franja: "bg-emerald-500",  card: "",                              monto: "text-slate-900" },
+        pendiente: { franja: "bg-amber-400",    card: "",                              monto: "text-slate-900" },
+        vencida:   { franja: "bg-red-500",      card: "bg-rose-50/60 border-rose-200", monto: "text-red-700"   },
+    };
+
     return (
         <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-sky-50 p-6 rounded-2xl border border-sky-100">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-sky-950">
-                        Facturación Mensual
-                    </h1>
-                    <p className="text-sm text-sky-700 mt-1">
-                        Revisa y genera las facturas para todos los usuarios activos.
-                    </p>
+                    <h1 className="text-2xl font-bold tracking-tight text-sky-950">Facturación Mensual</h1>
+                    <p className="text-sm text-sky-700 mt-1">Revisa y genera las facturas para todos los usuarios activos.</p>
                 </div>
                 <Button
                     onClick={handleGenerarFacturacion}
@@ -115,7 +93,6 @@ export default function FacturacionPage() {
 
             {/* Filtros */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                {/* Búsqueda */}
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
@@ -126,8 +103,6 @@ export default function FacturacionPage() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-
-                {/* Filtro de estado */}
                 <div className="flex items-center gap-2">
                     <Filter className="w-4 h-4 text-slate-400 shrink-0" />
                     <select
@@ -141,15 +116,86 @@ export default function FacturacionPage() {
                         <option value="vencida">Vencidas</option>
                     </select>
                 </div>
-
-                {/* Contador de resultados */}
                 <span className="text-xs text-slate-400 whitespace-nowrap shrink-0">
                     {facturasFiltradas.length} de {facturas.length} facturas
                 </span>
             </div>
 
-            {/* Tabla */}
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            {/* ── MOBILE: Cards (solo visible en < md) ── */}
+            <div className="md:hidden space-y-3">
+                {facturasFiltradas.length > 0 ? (
+                    facturasFiltradas.map((inv) => {
+                        const estadoReal = getEstadoReal(inv);
+                        const styles = estadoStyles[estadoReal];
+
+                        return (
+                            <div
+                                key={inv.id}
+                                className={`border rounded-xl overflow-hidden shadow-sm ${styles.card || "bg-white border-slate-200"}`}
+                            >
+                                {/* Franja de color según estado */}
+                                <div className={`h-1 w-full ${styles.franja}`} />
+
+                                <div className="p-4 flex flex-col gap-3">
+                                    {/* Cliente + badge */}
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div>
+                                            <p className="font-semibold text-slate-900 text-sm leading-snug">
+                                                {inv.cliente?.nombre}
+                                            </p>
+                                            <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                                #{inv.id.slice(0, 8).toUpperCase()}
+                                            </p>
+                                        </div>
+                                        <Badge variant={
+                                            estadoReal === "pagado" ? "success" :
+                                            estadoReal === "vencida" ? "error" : "warning"
+                                        }>
+                                            {estadoReal === "pagado" ? "Pagada" :
+                                             estadoReal === "vencida" ? "Vencida" : "Pendiente"}
+                                        </Badge>
+                                    </div>
+
+                                    {/* Monto destacado */}
+                                    <div className={`flex items-center justify-between rounded-lg px-3 py-2.5
+                                        ${estadoReal === "vencida" ? "bg-red-50" : "bg-slate-50"}`}>
+                                        <span className={`text-xs font-medium uppercase tracking-wide
+                                            ${estadoReal === "vencida" ? "text-red-400" : "text-slate-400"}`}>
+                                            Total
+                                        </span>
+                                        <span className={`text-xl font-semibold ${styles.monto}`}>
+                                            ${inv.total.toLocaleString("es-CO")}
+                                        </span>
+                                    </div>
+
+                                    {/* Período y vencimiento */}
+                                    <div className="flex flex-col gap-1.5 pt-1 border-t border-slate-100">
+                                        <div className="flex items-center justify-between text-xs">
+                                            <span className="text-slate-400">Período</span>
+                                            <span className="text-slate-700 font-medium">{inv.periodo}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs">
+                                            <span className="text-slate-400">
+                                                {estadoReal === "vencida" ? "Venció" : "Vence"}
+                                            </span>
+                                            <span className={`font-medium ${estadoReal === "vencida" ? "text-red-600" : "text-slate-700"}`}>
+                                                {inv.fecha_vencimiento}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })
+                ) : (
+                    <div className="text-center py-12 text-slate-400 text-sm bg-white border border-slate-200 rounded-xl">
+                        No se encontraron facturas con los filtros aplicados.
+                    </div>
+                )}
+            </div>
+
+            {/* ── DESKTOP: Tabla (oculta en < md) ── */}
+            <div className="hidden md:block bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-slate-50/50">
@@ -161,52 +207,35 @@ export default function FacturacionPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {facturasFiltradas.length > 0 ? facturasFiltradas.map((inv) => {
-                            const isOverdue =
-                                inv.estado === "pendiente" &&
-                                new Date(inv.fecha_vencimiento) < new Date();
-
-                            return (
-                                <TableRow key={inv.id} className={isOverdue ? "bg-rose-50/30" : ""}>
-                                    <TableCell>
-                                        <div className="font-medium text-slate-900">
-                                            {inv.cliente?.nombre}
-                                        </div>
-                                        <div className="text-xs text-slate-400 font-mono">
-                                            #{inv.id.slice(0, 8).toUpperCase()}
-                                        </div>
-                                    </TableCell>
-
-                                    <TableCell className="text-slate-600">{inv.periodo}</TableCell>
-
-                                    <TableCell className="font-semibold text-slate-900">
-                                        ${inv.total.toLocaleString("es-CO")}
-                                    </TableCell>
-
-                                    <TableCell className={isOverdue ? "text-rose-600 font-medium" : "text-slate-600"}>
-                                        {inv.fecha_vencimiento}
-                                    </TableCell>
-
-                                    <TableCell>
-                                        <Badge
-                                            variant={
-                                                inv.estado === "pagado"
-                                                    ? "success"
-                                                    : isOverdue
-                                                        ? "error"
-                                                        : "warning"
-                                            }
-                                        >
-                                            {inv.estado === "pagado"
-                                                ? "Pagada"
-                                                : isOverdue
-                                                    ? "Vencida"
-                                                    : "Pendiente"}
-                                        </Badge>
-                                    </TableCell>
-                                </TableRow>
-                            );
-                        }) : (
+                        {facturasFiltradas.length > 0 ? (
+                            facturasFiltradas.map((inv) => {
+                                const estadoReal = getEstadoReal(inv);
+                                return (
+                                    <TableRow key={inv.id} className={estadoReal === "vencida" ? "bg-rose-50/30" : ""}>
+                                        <TableCell>
+                                            <div className="font-medium text-slate-900">{inv.cliente?.nombre}</div>
+                                            <div className="text-xs text-slate-400 font-mono">#{inv.id.slice(0, 8).toUpperCase()}</div>
+                                        </TableCell>
+                                        <TableCell className="text-slate-600">{inv.periodo}</TableCell>
+                                        <TableCell className="font-semibold text-slate-900">
+                                            ${inv.total.toLocaleString("es-CO")}
+                                        </TableCell>
+                                        <TableCell className={estadoReal === "vencida" ? "text-rose-600 font-medium" : "text-slate-600"}>
+                                            {inv.fecha_vencimiento}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant={
+                                                estadoReal === "pagado" ? "success" :
+                                                estadoReal === "vencida" ? "error" : "warning"
+                                            }>
+                                                {estadoReal === "pagado" ? "Pagada" :
+                                                 estadoReal === "vencida" ? "Vencida" : "Pendiente"}
+                                            </Badge>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })
+                        ) : (
                             <TableRow>
                                 <TableCell colSpan={5} className="text-center py-10 text-slate-400 text-sm">
                                     No se encontraron facturas con los filtros aplicados.

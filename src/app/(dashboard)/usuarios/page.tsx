@@ -5,12 +5,8 @@ import { Search, Plus, Edit2, Trash2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+    Table, TableBody, TableCell, TableHead,
+    TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,51 +17,53 @@ import { Usuario } from "@/features/usuarios/types";
 import { useCategories } from "@/features/categorias/hooks";
 import Loading from "./loading";
 
+// --- Helper: iniciales del nombre ---
+function getInitials(nombre: string) {
+    return nombre
+        .split(" ")
+        .slice(0, 2)
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase();
+}
+
 export default function UsuariosPage() {
     const { usuarios, loading, add, update, remove } = useUsuarios();
     const { categories } = useCategories();
     const { toast } = useToast();
 
-    const activeCategories = categories.filter(c => c.activa);
+    const activeCategories = categories.filter((c) => c.activa);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
 
-    // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<"create" | "edit" | "delete">("create");
     const [currentUser, setCurrentUser] = useState<Partial<Usuario>>({});
-    const [formError, setFormError] = useState<string | null>(null);;
+    const [formError, setFormError] = useState<string | null>(null);
 
-    // Filtering logic
     const filteredUsers = useMemo(() => {
         return usuarios.filter((user) => {
             const matchesSearch =
                 user.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 user.cedula.includes(searchTerm);
-
             const matchesStatus =
                 statusFilter === "all" ? true : user.estado === statusFilter;
-
             return matchesSearch && matchesStatus;
         });
     }, [usuarios, searchTerm, statusFilter]);
 
     if (loading) return <Loading />;
 
-
     const getCategoryName = (categoria_id: string) => {
-        const category = categories.find(c => c.id === categoria_id);
+        const category = categories.find((c) => c.id === categoria_id);
         return category?.nombre_categoria || "Sin categoría";
     };
 
-    // Modal actions
     const openModal = (mode: "create" | "edit" | "delete", user?: Usuario) => {
         setModalMode(mode);
-        if (user) {
-            setCurrentUser(user);
-        } else {
-            setCurrentUser({ nombre: "", cedula: "", direccion: "", telefono: "", categoria_id: "", estado: "activo" });
-        }
+        setCurrentUser(
+            user ?? { nombre: "", cedula: "", direccion: "", telefono: "", categoria_id: "", estado: "activo" }
+        );
         setIsModalOpen(true);
     };
 
@@ -78,7 +76,6 @@ export default function UsuariosPage() {
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         setFormError(null);
-
         try {
             if (modalMode === "create") {
                 await add({
@@ -107,13 +104,11 @@ export default function UsuariosPage() {
             setFormError(msg);
             toast({ type: "error", title: "Error al guardar", description: msg });
         }
-    }
+    };
 
     const handleDelete = async () => {
         try {
-            if (currentUser.id) {
-                await remove(currentUser.id);
-            }
+            if (currentUser.id) await remove(currentUser.id);
             toast({ type: "success", title: "Usuario eliminado", description: `"${currentUser.nombre}" fue eliminado.` });
             closeModal();
         } catch (err: unknown) {
@@ -121,19 +116,15 @@ export default function UsuariosPage() {
             toast({ type: "error", title: "Error al eliminar", description: msg });
             closeModal();
         }
-    }
+    };
 
     return (
         <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                        Usuarios
-                    </h1>
-                    <p className="text-sm text-slate-500 mt-1">
-                        Gestiona los suscriptores del acueducto rural.
-                    </p>
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900">Usuarios</h1>
+                    <p className="text-sm text-slate-500 mt-1">Gestiona los suscriptores del acueducto rural.</p>
                 </div>
                 <Button onClick={() => openModal("create")} className="shrink-0 flex items-center gap-2">
                     <Plus className="w-4 h-4" />
@@ -141,7 +132,7 @@ export default function UsuariosPage() {
                 </Button>
             </div>
 
-            {/* Filters and Search Bar */}
+            {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -166,8 +157,75 @@ export default function UsuariosPage() {
                 </div>
             </div>
 
-            {/* Table */}
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            {/* ── MOBILE: Cards (solo visible en < md) ── */}
+            <div className="md:hidden space-y-3">
+                {filteredUsers.length > 0 ? (
+                    filteredUsers.map((user) => (
+                        <div
+                            key={user.id}
+                            className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3"
+                        >
+                            {/* Fila superior: avatar + nombre + badge */}
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    {/* Avatar con iniciales */}
+                                    <div className="w-10 h-10 rounded-full bg-sky-50 flex items-center justify-center text-sky-700 text-sm font-semibold shrink-0 select-none">
+                                        {getInitials(user.nombre)}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="font-semibold text-slate-900 text-sm truncate">{user.nombre}</p>
+                                        <p className="text-xs text-slate-500">CC {user.cedula}</p>
+                                    </div>
+                                </div>
+                                <Badge variant={user.estado === "activo" ? "success" : "error"}>
+                                    {user.estado === "activo" ? "Activo" : "Suspendido"}
+                                </Badge>
+                            </div>
+
+                            {/* Fila de detalles: dirección y categoría */}
+                            <div className="grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
+                                <div>
+                                    <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">Dirección</p>
+                                    <p className="text-sm text-slate-700 mt-0.5 leading-snug">{user.direccion}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">Categoría</p>
+                                    <p className="text-sm text-slate-700 mt-0.5">{getCategoryName(user.categoria_id)}</p>
+                                </div>
+                            </div>
+
+                            {/* Acciones */}
+                            <div className="flex justify-end gap-2 pt-1">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openModal("edit", user)}
+                                    className="flex items-center gap-1.5 text-sky-600 border-slate-200 hover:bg-sky-50 hover:border-sky-200 text-xs h-8 px-3"
+                                >
+                                    <Edit2 className="h-3.5 w-3.5" />
+                                    Editar
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openModal("delete", user)}
+                                    className="flex items-center gap-1.5 text-red-600 border-slate-200 hover:bg-red-50 hover:border-red-200 text-xs h-8 px-3"
+                                >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                    Eliminar
+                                </Button>
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    <div className="text-center py-12 text-slate-400 text-sm bg-white border border-slate-200 rounded-xl">
+                        No se encontraron usuarios.
+                    </div>
+                )}
+            </div>
+
+            {/* ── DESKTOP: Tabla (oculta en < md) ── */}
+            <div className="hidden md:block bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
@@ -180,50 +238,39 @@ export default function UsuariosPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {filteredUsers.length > 0 ? filteredUsers.map((user) => (
-                            <TableRow key={user.id}>
-                                <TableCell className="font-medium text-slate-900">
-                                    {user.nombre}
-                                    <div className="text-xs text-slate-500 md:hidden">
-                                        {user.cedula}
-                                    </div>
-                                </TableCell>
-                                <TableCell className="hidden md:table-cell text-slate-600">
-                                    {user.cedula}
-                                </TableCell>
-                                <TableCell className="text-slate-600">
-                                    {user.direccion}
-                                </TableCell>
-                                <TableCell className="text-slate-600">
-                                    {getCategoryName(user.categoria_id)}
-                                </TableCell>
-                                <TableCell>
-                                    <Badge
-                                        variant={user.estado === "activo" ? "success" : "error"}
-                                    >
-                                        {user.estado === "activo" ? "Activo" : "Suspendido"}
-                                    </Badge>
-                                </TableCell>
-                                <TableCell className="text-right space-x-2 whitespace-nowrap">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => openModal("edit", user)}
-                                        className="h-8 w-8 text-sky-600 hover:text-sky-700 hover:bg-sky-50"
-                                    >
-                                        <Edit2 className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => openModal("delete", user)}
-                                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </TableCell>
-                            </TableRow>
-                        )) : (
+                        {filteredUsers.length > 0 ? (
+                            filteredUsers.map((user) => (
+                                <TableRow key={user.id}>
+                                    <TableCell className="font-medium text-slate-900">{user.nombre}</TableCell>
+                                    <TableCell className="text-slate-600">{user.cedula}</TableCell>
+                                    <TableCell className="text-slate-600">{user.direccion}</TableCell>
+                                    <TableCell className="text-slate-600">{getCategoryName(user.categoria_id)}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={user.estado === "activo" ? "success" : "error"}>
+                                            {user.estado === "activo" ? "Activo" : "Suspendido"}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right space-x-2 whitespace-nowrap">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => openModal("edit", user)}
+                                            className="h-8 w-8 text-sky-600 hover:text-sky-700 hover:bg-sky-50"
+                                        >
+                                            <Edit2 className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => openModal("delete", user)}
+                                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
                             <TableRow>
                                 <TableCell colSpan={6} className="text-center py-8 text-slate-500">
                                     No se encontraron usuarios.
