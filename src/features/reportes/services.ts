@@ -92,3 +92,60 @@ export async function getTopMorosos(): Promise<ClienteMoroso[]> {
     .sort((a, b) => b.total_deuda - a.total_deuda)
     .slice(0, 5)
 }
+
+export async function getReportePendientesYMorosos(): Promise<{ morosos: ClienteMoroso[], pendientes: ClienteMoroso[] }> {
+  const { data, error } = await supabase
+    .from("facturas")
+    .select(`
+      total,
+      fecha_vencimiento,
+      clientes (
+        id,
+        nombre
+      )
+    `)
+    .eq("estado", "pendiente")
+
+  if (error) {
+    console.error("Error obteniendo reportes de pendientes:", error)
+    throw new Error("No se pudo cargar la lista completa de pendientes y morosos")
+  }
+
+  if (!data) return { morosos: [], pendientes: [] }
+
+  const groupedMorosos: Record<string, { nombre: string; total_deuda: number; facturas_pendientes: number }> = {}
+  const groupedPendientes: Record<string, { nombre: string; total_deuda: number; facturas_pendientes: number }> = {}
+
+  const today = new Date().toISOString().split("T")[0]
+
+  data.forEach((f: any) => {
+    const clienteId = f.clientes?.id
+    const nombre = f.clientes?.nombre ?? "Desconocido"
+    if (!clienteId) return
+
+    if (f.fecha_vencimiento < today) {
+      if (!groupedMorosos[clienteId]) {
+        groupedMorosos[clienteId] = { nombre, total_deuda: 0, facturas_pendientes: 0 }
+      }
+      groupedMorosos[clienteId].total_deuda += Number(f.total)
+      groupedMorosos[clienteId].facturas_pendientes += 1
+    } else {
+      if (!groupedPendientes[clienteId]) {
+        groupedPendientes[clienteId] = { nombre, total_deuda: 0, facturas_pendientes: 0 }
+      }
+      groupedPendientes[clienteId].total_deuda += Number(f.total)
+      groupedPendientes[clienteId].facturas_pendientes += 1
+    }
+  })
+
+  // Convert map to arrays
+  const morososArray = Object.entries(groupedMorosos)
+    .map(([id, clientData]) => ({ id, ...clientData }))
+    .sort((a, b) => b.total_deuda - a.total_deuda)
+
+  const pendientesArray = Object.entries(groupedPendientes)
+    .map(([id, clientData]) => ({ id, ...clientData }))
+    .sort((a, b) => b.total_deuda - a.total_deuda)
+
+  return { morosos: morososArray, pendientes: pendientesArray }
+}

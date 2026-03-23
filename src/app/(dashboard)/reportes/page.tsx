@@ -6,6 +6,7 @@ import { BarChart3, Download, TrendingUp, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useReportes } from "@/features/reportes/hooks"
 import { exportarPDF, exportarExcel } from "@/features/reportes/exports"
+import { getReportePendientesYMorosos } from "@/features/reportes/services"
 import {
   BarChart,
   Bar,
@@ -43,7 +44,8 @@ export default function ReportesPage() {
   const handleExportPDF = async () => {
     setExportandoPDF(true)
     try {
-      await exportarPDF(ingresos, morosos)
+      const { morosos: todosMorosos, pendientes: todosPendientes } = await getReportePendientesYMorosos()
+      await exportarPDF(ingresos, todosMorosos, todosPendientes)
     } finally {
       setExportandoPDF(false)
     }
@@ -52,7 +54,8 @@ export default function ReportesPage() {
   const handleExportExcel = async () => {
     setExportandoExcel(true)
     try {
-      await exportarExcel(ingresos, morosos)
+      const { morosos: todosMorosos, pendientes: todosPendientes } = await getReportePendientesYMorosos()
+      await exportarExcel(ingresos, todosMorosos, todosPendientes)
     } finally {
       setExportandoExcel(false)
     }
