@@ -35,6 +35,7 @@ export async function obtenerDeudaCliente(clienteId: string) {
     .select("id, periodo, total, saldo_pendiente, fecha_vencimiento")
     .eq("cliente_id", clienteId)
     .gt("saldo_pendiente", 0) // solo facturas con saldo
+    .order("periodo", { ascending: true })
 
   if (error) {
     console.error("Error obteniendo deuda del cliente:", error)

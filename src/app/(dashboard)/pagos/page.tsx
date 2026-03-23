@@ -280,7 +280,7 @@ export default function PagosPage() {
                                                         : `Se ha registrado el pago de $${monto.toLocaleString()} exitosamente.`
                                                 })
                                             } else {
-                                                await pagar(facturas[0].id, monto, metodo, user.id)
+                                                await pagarAdelantado({ monto }, metodo, user.id)
                                                 toast({
                                                     type: "success",
                                                     title: "Pago registrado",
