@@ -12,8 +12,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "AguaRural – Sistema de Administración",
-    template: "%s | AguaRural",
+    default: "Acueducto – Sistema de Administración",
+    template: "%s | Acueducto",
   },
   description: "Sistema de gestión de pagos para acueducto rural.",
 };
