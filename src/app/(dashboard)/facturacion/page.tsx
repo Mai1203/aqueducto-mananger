@@ -23,6 +23,17 @@ function getEstadoReal(inv: { estado: string; fecha_vencimiento: string }): Esta
     return "pendiente";
 }
 
+// Helper: Formatea el periodo (YYYY-MM) a (Mes YYYY)
+function formatPeriod(period: string) {
+    if (!period) return period;
+    const parts = period.split("-");
+    if (parts.length !== 2) return period;
+    const [year, month] = parts;
+    const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+    const monthName = date.toLocaleString("es-CO", { month: "long" });
+    return `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${year}`;
+}
+
 export default function FacturacionPage() {
     const { facturas, loading, reload } = useFacturas();
     const { toast } = useToast();
@@ -34,10 +45,12 @@ export default function FacturacionPage() {
     const facturasFiltradas = useMemo(() => {
         return facturas.filter((inv) => {
             const estadoReal = getEstadoReal(inv);
+            const formattedPeriod = formatPeriod(inv.periodo).toLowerCase();
             const matchesSearch =
                 inv.cliente?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 inv.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                inv.periodo.includes(searchTerm);
+                inv.periodo.includes(searchTerm) ||
+                formattedPeriod.includes(searchTerm.toLowerCase());
             const matchesEstado = estadoFiltro === "all" ? true : estadoReal === estadoFiltro;
             return matchesSearch && matchesEstado;
         });
@@ -49,7 +62,7 @@ export default function FacturacionPage() {
             const periodo = new Date().toISOString().slice(0, 7);
             await generarFacturacion(periodo);
             await reload();
-            toast({ type: "success", title: "Facturación generada", description: `Facturas del período ${periodo} creadas exitosamente.` });
+            toast({ type: "success", title: "Facturación generada", description: `Facturas del período ${formatPeriod(periodo)} creadas exitosamente.` });
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : "Error al generar la facturación.";
             if (msg.toLowerCase().includes("duplicate")) {
@@ -64,7 +77,8 @@ export default function FacturacionPage() {
 
     if (loading) return <Loading />;
 
-    const mesActual = new Date().toLocaleString("es-CO", { month: "long" });
+    const rawMes = new Date().toLocaleString("es-CO", { month: "long" });
+    const mesActual = rawMes.charAt(0).toUpperCase() + rawMes.slice(1);
 
     // Variantes de estilo por estado
     const estadoStyles = {
@@ -172,7 +186,7 @@ export default function FacturacionPage() {
                                     <div className="flex flex-col gap-1.5 pt-1 border-t border-slate-100">
                                         <div className="flex items-center justify-between text-xs">
                                             <span className="text-slate-400">Período</span>
-                                            <span className="text-slate-700 font-medium">{inv.periodo}</span>
+                                            <span className="text-slate-700 font-medium">{formatPeriod(inv.periodo)}</span>
                                         </div>
                                         <div className="flex items-center justify-between text-xs">
                                             <span className="text-slate-400">
@@ -216,7 +230,7 @@ export default function FacturacionPage() {
                                             <div className="font-medium text-slate-900">{inv.cliente?.nombre}</div>
                                             <div className="text-xs text-slate-400 font-mono">#{inv.id.slice(0, 8).toUpperCase()}</div>
                                         </TableCell>
-                                        <TableCell className="text-slate-600">{inv.periodo}</TableCell>
+                                        <TableCell className="text-slate-600 font-medium">{formatPeriod(inv.periodo)}</TableCell>
                                         <TableCell className="font-semibold text-slate-900">
                                             ${inv.total.toLocaleString("es-CO")}
                                         </TableCell>
