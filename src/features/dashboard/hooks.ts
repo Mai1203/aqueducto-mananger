@@ -1,82 +1,53 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { getDashboardMetrics, getUltimosPagos, getPagosMensuales } from "./services"
-import { DashboardMetrics, UltimoPago } from "./types"
 import { useAuth } from "@/features/auth/AuthContext"
-import { supabase } from "@/lib/supabaseClient"
 
-interface PagosMensuales {
-  mes: string
-  total: number
-}
-
-interface UseDashboardReturn {
-  metrics: DashboardMetrics | null
-  pagos: UltimoPago[]
-  pagosMensuales: PagosMensuales[]
-  loading: boolean
-  error: string | null
-  refetch: () => void
-}
-
-export function useDashboard(): UseDashboardReturn {
+export function useDashboard() {
   const { user, loading: authLoading } = useAuth()
+  const queryClient = useQueryClient()
 
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
-  const [pagos, setPagos] = useState<UltimoPago[]>([])
-  const [pagosMensuales, setPagosMensuales] = useState<PagosMensuales[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const metricsQuery = useQuery({
+    queryKey: ["dashboard", "metrics"],
+    queryFn: getDashboardMetrics,
+    enabled: !authLoading && !!user?.id,
+  })
 
-  const fetchData = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+  const pagosQuery = useQuery({
+    queryKey: ["dashboard", "ultimos-pagos"],
+    queryFn: getUltimosPagos,
+    enabled: !authLoading && !!user?.id,
+  })
 
-    try {
-      // Garantizar que la sesión esté lista y el token refrescado
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        setLoading(false)
-        return
-      }
+  const mensualQuery = useQuery({
+    queryKey: ["dashboard", "pagos-mensuales"],
+    queryFn: getPagosMensuales,
+    enabled: !authLoading && !!user?.id,
+  })
 
-      const [metricsData, pagosData, pagosMensualesData] = await Promise.all([
-        getDashboardMetrics(),
-        getUltimosPagos(),
-        getPagosMensuales(),
-      ])
+  const loading =
+    authLoading ||
+    metricsQuery.isLoading ||
+    pagosQuery.isLoading ||
+    mensualQuery.isLoading
 
-      setMetrics(metricsData)
-      setPagos(pagosData)
-      setPagosMensuales(pagosMensualesData)
+  const error =
+    (metricsQuery.error as Error)?.message ||
+    (pagosQuery.error as Error)?.message ||
+    (mensualQuery.error as Error)?.message ||
+    null
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cargar el dashboard")
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const refetch = () => {
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+  }
 
-  useEffect(() => {
-    if (authLoading) return
-    if (!user?.id) {
-      setLoading(false)
-      return
-    }
-
-    fetchData()
-
-    // Recuperación al volver a la pestaña
-    const handleFocus = () => {
-      fetchData()
-    }
-    window.addEventListener('focus', handleFocus)
-    
-    return () => {
-      window.removeEventListener('focus', handleFocus)
-    }
-  }, [user?.id, authLoading, fetchData])
-
-  return { metrics, pagos, pagosMensuales, loading, error, refetch: fetchData }
+  return {
+    metrics: metricsQuery.data || null,
+    pagos: pagosQuery.data || [],
+    pagosMensuales: mensualQuery.data || [],
+    loading,
+    error,
+    refetch,
+  }
 }

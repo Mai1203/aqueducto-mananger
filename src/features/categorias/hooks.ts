@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Category } from "./types"
 import {
   getCategories,
@@ -7,58 +7,50 @@ import {
   deleteCategory,
 } from "./services"
 import { useAuth } from "@/features/auth/AuthContext"
-import { supabase } from "@/lib/supabaseClient"
 
 export function useCategories() {
   const { user, loading: authLoading } = useAuth()
-  const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
 
-  const fetchCategories = useCallback(async () => {
-    if (!user?.id) return
-    setLoading(true)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        setLoading(false)
-        return
-      }
-      const data = await getCategories()
-      setCategories(data)
-    } catch (error) {
-      console.error("Error fetching categories:", error)
-    } finally {
-      setLoading(false)
-    }
-  }, [user?.id])
+  const { data: categories = [], isLoading } = useQuery({
+    queryKey: ["categories"],
+    queryFn: getCategories,
+    enabled: !authLoading && !!user?.id,
+  })
 
-  useEffect(() => {
-    if (authLoading) return
-    if (!user?.id) {
-      setLoading(false)
-      return
-    }
-    fetchCategories()
+  const addMutation = useMutation({
+    mutationFn: createCategory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] })
+    },
+  })
 
-    const handleFocus = () => fetchCategories()
-    window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
-  }, [user?.id, authLoading, fetchCategories])
+  const updateMutation = useMutation({
+    mutationFn: ({ id, category }: { id: string; category: Partial<Category> }) =>
+      updateCategory(id, category),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] })
+    },
+  })
+
+  const removeMutation = useMutation({
+    mutationFn: deleteCategory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] })
+    },
+  })
 
   const add = async (category: Omit<Category, "id">) => {
-    await createCategory(category)
-    fetchCategories()
+    await addMutation.mutateAsync(category)
   }
 
   const update = async (id: string, category: Partial<Category>) => {
-    await updateCategory(id, category)
-    fetchCategories()
+    await updateMutation.mutateAsync({ id, category })
   }
 
   const remove = async (id: string) => {
-    await deleteCategory(id)
-    fetchCategories()
+    await removeMutation.mutateAsync(id)
   }
 
-  return { categories, loading, add, update, remove }
+  return { categories, loading: isLoading || authLoading, add, update, remove }
 }

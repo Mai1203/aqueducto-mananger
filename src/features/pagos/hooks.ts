@@ -1,52 +1,59 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { buscarClientes, obtenerDeudaCliente, registrarPago, registrarPagoAdelantado } from "./services"
-import { ClienteBusqueda, FacturaPendiente } from "./types"
-import { supabase } from "@/lib/supabaseClient"
+import { ClienteBusqueda } from "./types"
 
 export function usePagos() {
-    const [clientes, setClientes] = useState<ClienteBusqueda[]>([])
+    const queryClient = useQueryClient()
+    const [searchQuery, setSearchQuery] = useState("")
     const [clienteSeleccionado, setClienteSeleccionado] = useState<ClienteBusqueda | null>(null)
-    const [deuda, setDeuda] = useState(0)
-    const [facturas, setFacturas] = useState<FacturaPendiente[]>([])
 
-    const buscar = async (query: string) => {
-        if (!query) {
-            setClientes([])
-            return
-        }
+    // Búsqueda de clientes con TanStack Query
+    const { data: searchResults = [] } = useQuery({
+        queryKey: ["clientes", "search", searchQuery],
+        queryFn: () => buscarClientes(searchQuery),
+        enabled: searchQuery.length > 0,
+    })
 
-        try {
-            await supabase.auth.getSession()
-            const data = await buscarClientes(query)
-            setClientes(data || [])
-        } catch (error) {
-            console.error("Error buscando clientes:", error)
-        }
-    }
+    // Obtener deuda del cliente seleccionado
+    const { data: deudaData } = useQuery({
+        queryKey: ["clientes", "deuda", clienteSeleccionado?.id],
+        queryFn: () => obtenerDeudaCliente(clienteSeleccionado!.id),
+        enabled: !!clienteSeleccionado?.id,
+    })
 
-    const seleccionarCliente = async (cliente: ClienteBusqueda | null) => {
-        if (!cliente) {
-            setClienteSeleccionado(null)
-            setClientes([])
-            setFacturas([])
-            setDeuda(0)
-            return
-        }
+    // Mutación para pago simple
+    const pagarMutation = useMutation({
+        mutationFn: registrarPago,
+        onSuccess: () => {
+            if (clienteSeleccionado) {
+                queryClient.invalidateQueries({ queryKey: ["clientes", "deuda", clienteSeleccionado.id] })
+            }
+            queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+        },
+    })
 
+    // Mutación para pago adelantado
+    const pagarAdelantadoMutation = useMutation({
+        mutationFn: registrarPagoAdelantado,
+        onSuccess: () => {
+            if (clienteSeleccionado) {
+                queryClient.invalidateQueries({ queryKey: ["clientes", "deuda", clienteSeleccionado.id] })
+            }
+            queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+        },
+    })
+
+    const buscar = useCallback(async (query: string) => {
+        setSearchQuery(query)
+    }, [])
+
+    const seleccionarCliente = useCallback((cliente: ClienteBusqueda | null) => {
         setClienteSeleccionado(cliente)
-        setClientes([])
-
-        try {
-            await supabase.auth.getSession()
-            const data = await obtenerDeudaCliente(cliente.id)
-            setFacturas(data.facturas || [])
-            setDeuda(data.deuda_total || 0)
-        } catch (error) {
-            console.error("Error seleccionando cliente:", error)
-        }
-    }
+        setSearchQuery("") // Limpiar búsqueda tras seleccionar
+    }, [])
 
     const pagar = async (
         facturaId: string,
@@ -54,25 +61,12 @@ export function usePagos() {
         metodo: "efectivo" | "transferencia",
         usuarioId: string
     ) => {
-        if (!clienteSeleccionado) return
-
-        try {
-            await supabase.auth.getSession()
-            await registrarPago({
-                factura_id: facturaId,
-                monto,
-                metodo_pago: metodo,
-                registrado_por: usuarioId,
-            })
-
-            // refrescar deuda
-            const data = await obtenerDeudaCliente(clienteSeleccionado.id)
-            setFacturas(data.facturas || [])
-            setDeuda(data.deuda_total || 0)
-        } catch (error) {
-            console.error("Error registrando pago:", error)
-            throw error
-        }
+        await pagarMutation.mutateAsync({
+            factura_id: facturaId,
+            monto,
+            metodo_pago: metodo,
+            registrado_por: usuarioId,
+        })
     }
 
     const pagarAdelantado = async (
@@ -81,34 +75,23 @@ export function usePagos() {
         usuarioId: string
     ) => {
         if (!clienteSeleccionado) return
-
-        try {
-            await supabase.auth.getSession()
-            await registrarPagoAdelantado({
-                cliente_id: clienteSeleccionado.id,
-                ...params,
-                metodo_pago: metodo,
-                registrado_por: usuarioId,
-            })
-
-            // refrescar deuda
-            const data = await obtenerDeudaCliente(clienteSeleccionado.id)
-            setFacturas(data.facturas || [])
-            setDeuda(data.deuda_total || 0)
-        } catch (error) {
-            console.error("Error registrando pago adelantado:", error)
-            throw error
-        }
+        await pagarAdelantadoMutation.mutateAsync({
+            cliente_id: clienteSeleccionado.id,
+            ...params,
+            metodo_pago: metodo,
+            registrado_por: usuarioId,
+        })
     }
 
     return {
-        clientes,
+        clientes: searchResults,
         clienteSeleccionado,
-        deuda,
-        facturas,
+        deuda: deudaData?.deuda_total || 0,
+        facturas: deudaData?.facturas || [],
         buscar,
         seleccionarCliente,
         pagar,
         pagarAdelantado,
+        loading: pagarMutation.isPending || pagarAdelantadoMutation.isPending
     }
 }
