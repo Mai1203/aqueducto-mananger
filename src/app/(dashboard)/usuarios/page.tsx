@@ -35,6 +35,7 @@ export default function UsuariosPage() {
     const activeCategories = categories.filter((c) => c.activa);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
+    const [categoryFilter, setCategoryFilter] = useState("all");
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<"create" | "edit" | "delete">("create");
@@ -48,9 +49,11 @@ export default function UsuariosPage() {
                 user.cedula.includes(searchTerm);
             const matchesStatus =
                 statusFilter === "all" ? true : user.estado === statusFilter;
-            return matchesSearch && matchesStatus;
+            const matchesCategory =
+                categoryFilter === "all" ? true : user.categoria_id === categoryFilter;
+            return matchesSearch && matchesStatus && matchesCategory;
         });
-    }, [usuarios, searchTerm, statusFilter]);
+    }, [usuarios, searchTerm, statusFilter, categoryFilter]);
 
     if (loading) return <Loading />;
 
@@ -144,7 +147,19 @@ export default function UsuariosPage() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <select
+                        className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white min-w-[150px]"
+                        value={categoryFilter}
+                        onChange={(e) => setCategoryFilter(e.target.value)}
+                    >
+                        <option value="all">Todas las categorías</option>
+                        {categories.map((cat) => (
+                            <option key={cat.id} value={cat.id}>
+                                {cat.nombre_categoria}
+                            </option>
+                        ))}
+                    </select>
                     <select
                         className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white min-w-[150px]"
                         value={statusFilter}
