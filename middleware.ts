@@ -3,6 +3,13 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+
+  // Excluir rutas de API del middleware
+  if (pathname.startsWith('/api')) {
+    return NextResponse.next()
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -35,13 +42,6 @@ export async function middleware(request: NextRequest) {
   const {
     data: { session },
   } = await supabase.auth.getSession()
-
-  const pathname = request.nextUrl.pathname
-
-  // Excluir rutas de API del middleware
-  if (pathname.startsWith('/api')) {
-    return response
-  }
 
   // 1. Redirigir a login si no hay sesión
   if (!session && !pathname.startsWith('/login')) {
