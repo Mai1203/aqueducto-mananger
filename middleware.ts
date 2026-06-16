@@ -38,6 +38,11 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
 
+  // Excluir rutas de API del middleware
+  if (pathname.startsWith('/api')) {
+    return response
+  }
+
   // 1. Redirigir a login si no hay sesión
   if (!session && !pathname.startsWith('/login')) {
     const url = request.nextUrl.clone()
@@ -76,5 +81,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next|favicon.ico).*)'],
+  matcher: ['/((?!api|_next|favicon.ico).*)'],
 }
