@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [router, pathname])
 
-  useEffect(() => {
+useEffect(() => {
     // Carga inicial
     supabase.auth.getSession().then(({ data }) => {
       loadUser(data.session?.user ?? null)
