@@ -12,6 +12,8 @@ import {
     Droplet,
     Menu,
     X,
+    LandPlot,
+    MapPinHouse
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -19,13 +21,24 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/features/auth/AuthContext";
 
-const navigation = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
-    { name: "Usuarios", href: "/usuarios", icon: Users },
-    { name: "Categorías", href: "/categorias", icon: Tags },
-    { name: "Facturación", href: "/facturacion", icon: FileText },
-    { name: "Pagos", href: "/pagos", icon: CreditCard },
-    { name: "Reportes", href: "/reportes", icon: BarChart3 },
+const menuGroups = [
+    {
+        title: "Gestión",
+        items: [
+            { name: "Panel Principal", href: "/", icon: LayoutDashboard },
+            { name: "Usuarios", href: "/usuarios", icon: Users },
+            { name: "Categorías", href: "/categorias", icon: Tags },
+            { name: "Matriculas", href: "/matriculas", icon: MapPinHouse},
+        ]
+    },
+    {
+        title: "Finanzas y Reportes",
+        items: [
+            { name: "Facturación", href: "/facturacion", icon: FileText },
+            { name: "Pagos", href: "/pagos", icon: CreditCard },
+            { name: "Reportes", href: "/reportes", icon: BarChart3 },
+        ]
+    }
 ];
 
 
@@ -61,49 +74,57 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                 )}
             </div>
 
-            {/* Nav label */}
-            <div className="px-6 mb-2">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Menú</p>
-            </div>
-
             {/* Navigation */}
-            <nav className="flex-1 px-4 space-y-0.5 overflow-y-auto">
-                {navigation
-                .filter((item) => {
-                    if (role == "cajero") {
-                        // Cajero NO puede ver Categorías ni Facturación
-                        return item.href !== "/categorias" && item.href !== "/facturacion" && item.href !== "/usuarios";
-                    }
-                    return true;
-                })
-                .map((item) => {
-                    const isActive =
-                        pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}`));
+            <nav className="flex-1 px-4 space-y-6 overflow-y-auto">
+                {menuGroups.map((group) => {
+                    const filteredItems = group.items.filter((item) => {
+                        if (role === "cajero") {
+                            // Cajero NO puede ver Categorías ni Facturación ni Usuarios
+                            return item.href !== "/categorias" && item.href !== "/facturacion" && item.href !== "/usuarios";
+                        }
+                        return true;
+                    });
+
+                    if (filteredItems.length === 0) return null;
+
                     return (
-                        <Link
-                            key={item.name}
-                            href={item.href}
-                            onClick={onClose}
-                            className={cn(
-                                "group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-150",
-                                isActive
-                                    ? "bg-sky-50 text-sky-700 shadow-sm"
-                                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                            )}
-                        >
-                            <item.icon
-                                className={cn(
-                                    "mr-3 flex-shrink-0 h-[18px] w-[18px] transition-colors",
-                                    isActive
-                                        ? "text-sky-600"
-                                        : "text-slate-400 group-hover:text-slate-500"
-                                )}
-                            />
-                            {item.name}
-                            {isActive && (
-                                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-sky-500" />
-                            )}
-                        </Link>
+                        <div key={group.title} className="space-y-1.5">
+                            <p className="px-4 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                                {group.title}
+                            </p>
+                            <div className="space-y-0.5">
+                                {filteredItems.map((item) => {
+                                    const isActive =
+                                        pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}`));
+                                    return (
+                                        <Link
+                                            key={item.name}
+                                            href={item.href}
+                                            onClick={onClose}
+                                            className={cn(
+                                                "group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-150",
+                                                isActive
+                                                    ? "bg-sky-50 text-sky-700 shadow-sm"
+                                                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                                            )}
+                                        >
+                                            <item.icon
+                                                className={cn(
+                                                    "mr-3 flex-shrink-0 h-[18px] w-[18px] transition-colors",
+                                                    isActive
+                                                        ? "text-sky-600"
+                                                        : "text-slate-400 group-hover:text-slate-500"
+                                                )}
+                                            />
+                                            {item.name}
+                                            {isActive && (
+                                                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-sky-500" />
+                                            )}
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        </div>
                     );
                 })}
             </nav>
