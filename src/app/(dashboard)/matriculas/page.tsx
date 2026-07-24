@@ -287,7 +287,7 @@ export default function MatriculasPage() {
                                 <div className="grid grid-cols-2 gap-2">
                                     <div>
                                         <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Dirección / Lote</p>
-                                        <p className="text-xs text-slate-600 mt-0.5 leading-snug">{mat.direccion_lote || mat.cliente?.direccion || "N/A"}</p>
+                                        <p className="text-xs text-slate-600 mt-0.5 leading-snug">{mat.direccion_lote || "N/A"}</p>
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Categoría</p>
@@ -346,8 +346,8 @@ export default function MatriculasPage() {
                                 <TableRow key={mat.id}>
                                     <TableCell className="font-mono font-bold text-slate-900">{mat.numero_matricula}</TableCell>
                                     <TableCell className="font-medium text-slate-900">{mat.cliente?.nombre || "N/A"}</TableCell>
-                                    <TableCell className="text-slate-600 max-w-[200px] truncate" title={mat.direccion_lote ? `Lote: ${mat.direccion_lote} | Cliente: ${mat.cliente?.direccion}` : mat.cliente?.direccion}>
-                                        {mat.direccion_lote || mat.cliente?.direccion || "N/A"}
+                                    <TableCell className="text-slate-600 max-w-[200px] truncate" title={mat.direccion_lote ? `Lote: ${mat.direccion_lote}` : "N/A"}>
+                                        {mat.direccion_lote || "N/A"}
                                     </TableCell>
                                     <TableCell className="text-slate-600">
                                         {mat.categoria?.nombre_categoria || getCategoryName(mat.categoria_id)}

@@ -2,7 +2,6 @@ export type EstadoFactura = "pendiente" | "pagado";
 
 export interface Factura {
   id: string;
-  cliente_id: string;
   periodo: string;
   valor_base: number;
   recargo: number;
@@ -12,8 +11,14 @@ export interface Factura {
   fecha_generacion: string;
   fecha_vencimiento: string;
   created_at: string;
+  matricula_id?: string | null;
 
-  cliente?: {
-    nombre: string;
-  };
+  matricula?: {
+    id?: string;
+    numero_matricula?: string | null;
+    cliente?: {
+      id?: string;
+      nombre?: string;
+    } | null;
+  } | null;
 }

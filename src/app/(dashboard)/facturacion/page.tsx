@@ -46,11 +46,17 @@ export default function FacturacionPage() {
         return facturas.filter((inv) => {
             const estadoReal = getEstadoReal(inv);
             const formattedPeriod = formatPeriod(inv.periodo).toLowerCase();
+            const clienteNombre = inv.matricula?.cliente?.nombre?.toLowerCase() || "";
+            const numMatricula = inv.matricula?.numero_matricula?.toLowerCase() || "";
+            const searchLower = searchTerm.toLowerCase();
+
             const matchesSearch =
-                inv.cliente?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                inv.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                inv.periodo.includes(searchTerm) ||
-                formattedPeriod.includes(searchTerm.toLowerCase());
+                clienteNombre.includes(searchLower) ||
+                numMatricula.includes(searchLower) ||
+                inv.id.toLowerCase().includes(searchLower) ||
+                inv.periodo.includes(searchLower) ||
+                formattedPeriod.includes(searchLower);
+
             const matchesEstado = estadoFiltro === "all" ? true : estadoReal === estadoFiltro;
             return matchesSearch && matchesEstado;
         });
@@ -111,7 +117,7 @@ export default function FacturacionPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                         type="text"
-                        placeholder="Buscar por cliente, N° factura o período..."
+                        placeholder="Buscar por cliente, N° matrícula, N° factura o período..."
                         className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-shadow"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -155,7 +161,12 @@ export default function FacturacionPage() {
                                     <div className="flex items-start justify-between gap-2">
                                         <div>
                                             <p className="font-semibold text-slate-900 text-sm leading-snug">
-                                                {inv.cliente?.nombre}
+                                                {inv.matricula?.cliente?.nombre || "Sin cliente"}
+                                            </p>
+                                            <p className="text-xs text-sky-700 font-medium mt-0.5">
+                                                {inv.matricula?.numero_matricula
+                                                    ? `Matrícula: ${inv.matricula.numero_matricula}`
+                                                    : "Sin matrícula"}
                                             </p>
                                             <p className="text-[11px] text-slate-400 font-mono mt-0.5">
                                                 #{inv.id.slice(0, 8).toUpperCase()}
@@ -213,7 +224,7 @@ export default function FacturacionPage() {
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-slate-50/50">
-                            <TableHead>Factura / Cliente</TableHead>
+                            <TableHead>Cliente / Matrícula</TableHead>
                             <TableHead>Período</TableHead>
                             <TableHead>Total</TableHead>
                             <TableHead>Vencimiento</TableHead>
@@ -227,8 +238,19 @@ export default function FacturacionPage() {
                                 return (
                                     <TableRow key={inv.id} className={estadoReal === "vencida" ? "bg-rose-50/30" : ""}>
                                         <TableCell>
-                                            <div className="font-medium text-slate-900">{inv.cliente?.nombre}</div>
-                                            <div className="text-xs text-slate-400 font-mono">#{inv.id.slice(0, 8).toUpperCase()}</div>
+                                            <div className="font-semibold text-slate-900">
+                                                {inv.matricula?.cliente?.nombre || "Sin cliente"}
+                                            </div>
+                                            <div className="text-xs text-sky-700 font-medium mt-0.5">
+                                                {inv.matricula?.numero_matricula ? (
+                                                    <span>Matrícula: {inv.matricula.numero_matricula}</span>
+                                                ) : (
+                                                    <span className="text-slate-400">Sin matrícula</span>
+                                                )}
+                                            </div>
+                                            <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                                #{inv.id.slice(0, 8).toUpperCase()}
+                                            </div>
                                         </TableCell>
                                         <TableCell className="text-slate-600 font-medium">{formatPeriod(inv.periodo)}</TableCell>
                                         <TableCell className="font-semibold text-slate-900">

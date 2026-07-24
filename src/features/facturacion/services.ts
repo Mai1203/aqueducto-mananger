@@ -7,42 +7,47 @@ export async function getFacturas(): Promise<Factura[]> {
         .from("facturas")
         .select(`
       *,
-      cliente:clientes (
-        nombre
+      matricula:matriculas (
+        id,
+        numero_matricula,
+        cliente:clientes (
+          id,
+          nombre
+        )
       )
     `)
         .order("created_at", { ascending: false });
 
     if (error) throw new Error(error.message);
 
-    return data as Factura[];
+    return data as unknown as Factura[];
 }
 
 // 🔹 Generar facturación mensual
 export async function generarFacturacion(periodo: string) {
-    const { data: clientes, error } = await supabase
-        .from("clientes")
+    const { data: matriculas, error } = await supabase
+        .from("matriculas")
         .select(`
       id,
       categoria:categorias (
         valor_mensual
       )
     `)
-        .eq("estado", "activo");
+        .eq("estado", "activa");
 
     if (error) throw new Error(error.message);
 
-    for (const cliente of clientes) {
-        const categoria = Array.isArray(cliente.categoria)
-            ? cliente.categoria[0]
-            : cliente.categoria as any;
+    for (const mat of matriculas) {
+        const categoria = Array.isArray(mat.categoria)
+            ? mat.categoria[0]
+            : mat.categoria as any;
 
         const valorBase = categoria?.valor_mensual || 0;
 
         const { error: insertError } = await supabase
             .from("facturas")
             .insert({
-                cliente_id: cliente.id,
+                matricula_id: mat.id,
                 periodo,
                 valor_base: valorBase,
                 recargo: 0,

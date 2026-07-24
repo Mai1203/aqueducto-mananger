@@ -7,8 +7,7 @@ export async function getMatriculas(): Promise<Matricula[]> {
     .select(`
       *,
       cliente:clientes (
-        nombre,
-        direccion
+        nombre
       ),
       categoria:categorias (
         nombre_categoria

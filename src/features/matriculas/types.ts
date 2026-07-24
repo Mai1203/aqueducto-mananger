@@ -10,7 +10,6 @@ export interface Matricula {
   created_at?: string
   cliente?: {
     nombre: string
-    direccion: string
   }
   categoria?: {
     nombre_categoria: string
