@@ -14,7 +14,6 @@ import { Modal } from "@/components/ui/modal";
 
 import { useUsuarios } from "@/features/usuarios/hooks";
 import { Usuario } from "@/features/usuarios/types";
-import { useCategories } from "@/features/categorias/hooks";
 import Loading from "./loading";
 
 // --- Helper: iniciales del nombre ---
@@ -29,13 +28,10 @@ function getInitials(nombre: string) {
 
 export default function UsuariosPage() {
     const { usuarios, loading, add, update, remove } = useUsuarios();
-    const { categories } = useCategories();
     const { toast } = useToast();
 
-    const activeCategories = categories.filter((c) => c.activa);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
-    const [categoryFilter, setCategoryFilter] = useState("all");
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<"create" | "edit" | "delete">("create");
@@ -49,23 +45,16 @@ export default function UsuariosPage() {
                 user.cedula.includes(searchTerm);
             const matchesStatus =
                 statusFilter === "all" ? true : user.estado === statusFilter;
-            const matchesCategory =
-                categoryFilter === "all" ? true : user.categoria_id === categoryFilter;
-            return matchesSearch && matchesStatus && matchesCategory;
+            return matchesSearch && matchesStatus;
         });
-    }, [usuarios, searchTerm, statusFilter, categoryFilter]);
+    }, [usuarios, searchTerm, statusFilter]);
 
     if (loading) return <Loading />;
-
-    const getCategoryName = (categoria_id: string) => {
-        const category = categories.find((c) => c.id === categoria_id);
-        return category?.nombre_categoria || "Sin categoría";
-    };
 
     const openModal = (mode: "create" | "edit" | "delete", user?: Usuario) => {
         setModalMode(mode);
         setCurrentUser(
-            user ?? { nombre: "", cedula: "", direccion: "", telefono: "", categoria_id: "", estado: "activo" }
+            user ?? { nombre: "", cedula: "", telefono: "", estado: "activo" }
         );
         setIsModalOpen(true);
     };
@@ -84,9 +73,7 @@ export default function UsuariosPage() {
                 await add({
                     nombre: currentUser.nombre!,
                     cedula: currentUser.cedula!,
-                    direccion: currentUser.direccion!,
                     telefono: currentUser.telefono,
-                    categoria_id: currentUser.categoria_id!,
                     estado: currentUser.estado ?? "activo",
                 });
                 toast({ type: "success", title: "Usuario creado", description: `${currentUser.nombre} fue agregado exitosamente.` });
@@ -94,9 +81,7 @@ export default function UsuariosPage() {
                 await update(currentUser.id, {
                     nombre: currentUser.nombre,
                     cedula: currentUser.cedula,
-                    direccion: currentUser.direccion,
                     telefono: currentUser.telefono,
-                    categoria_id: currentUser.categoria_id,
                     estado: currentUser.estado,
                 });
                 toast({ type: "success", title: "Usuario actualizado", description: "Los cambios fueron guardados." });
@@ -150,18 +135,6 @@ export default function UsuariosPage() {
                 <div className="flex items-center gap-2 flex-wrap">
                     <select
                         className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white min-w-[150px]"
-                        value={categoryFilter}
-                        onChange={(e) => setCategoryFilter(e.target.value)}
-                    >
-                        <option value="all">Todas las categorías</option>
-                        {categories.map((cat) => (
-                            <option key={cat.id} value={cat.id}>
-                                {cat.nombre_categoria}
-                            </option>
-                        ))}
-                    </select>
-                    <select
-                        className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white min-w-[150px]"
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
                     >
@@ -197,17 +170,12 @@ export default function UsuariosPage() {
                                 </Badge>
                             </div>
 
-                            {/* Fila de detalles: dirección y categoría */}
-                            <div className="grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
-                                <div>
-                                    <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">Dirección</p>
-                                    <p className="text-sm text-slate-700 mt-0.5 leading-snug">{user.direccion}</p>
+                            {user.telefono && (
+                                <div className="border-t border-slate-100 pt-2 text-xs text-slate-600">
+                                    <span className="font-medium text-slate-400">Teléfono: </span>
+                                    {user.telefono}
                                 </div>
-                                <div>
-                                    <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">Categoría</p>
-                                    <p className="text-sm text-slate-700 mt-0.5">{getCategoryName(user.categoria_id)}</p>
-                                </div>
-                            </div>
+                            )}
 
                             {/* Acciones */}
                             <div className="flex justify-end gap-2 pt-1">
@@ -246,8 +214,7 @@ export default function UsuariosPage() {
                         <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
                             <TableHead>Nombre</TableHead>
                             <TableHead>Cédula</TableHead>
-                            <TableHead>Dirección</TableHead>
-                            <TableHead>Categoría</TableHead>
+                            <TableHead>Teléfono</TableHead>
                             <TableHead>Estado</TableHead>
                             <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
@@ -258,8 +225,7 @@ export default function UsuariosPage() {
                                 <TableRow key={user.id}>
                                     <TableCell className="font-medium text-slate-900">{user.nombre}</TableCell>
                                     <TableCell className="text-slate-600">{user.cedula}</TableCell>
-                                    <TableCell className="text-slate-600">{user.direccion}</TableCell>
-                                    <TableCell className="text-slate-600">{getCategoryName(user.categoria_id)}</TableCell>
+                                    <TableCell className="text-slate-600">{user.telefono || "-"}</TableCell>
                                     <TableCell>
                                         <Badge variant={user.estado === "activo" ? "success" : "error"}>
                                             {user.estado === "activo" ? "Activo" : "Suspendido"}
@@ -287,7 +253,7 @@ export default function UsuariosPage() {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                                <TableCell colSpan={5} className="text-center py-8 text-slate-500">
                                     No se encontraron usuarios.
                                 </TableCell>
                             </TableRow>
@@ -366,17 +332,6 @@ export default function UsuariosPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Dirección / Vereda</label>
-                                <input
-                                    type="text"
-                                    required
-                                    className="w-full h-10 px-3 py-2 bg-white border border-slate-300 rounded-md text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-shadow"
-                                    placeholder="Ej. Vereda La Esperanza, Finca El Sol"
-                                    value={currentUser.direccion || ""}
-                                    onChange={(e) => setCurrentUser({ ...currentUser, direccion: e.target.value })}
-                                />
-                            </div>
-                            <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
                                 <input
                                     type="text"
@@ -392,24 +347,6 @@ export default function UsuariosPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Categoría</label>
-                                <select
-                                    className="w-full h-10 px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-shadow"
-                                    value={currentUser.categoria_id || ""}
-                                    onChange={(e) =>
-                                        setCurrentUser({ ...currentUser, categoria_id: e.target.value })
-                                    }
-                                >
-                                    <option value="">Seleccione una categoría</option>
-
-                                    {activeCategories.map((cat) => (
-                                        <option key={cat.id} value={cat.id}>
-                                            {cat.nombre_categoria}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Estado</label>
                                 <select
                                     className="w-full h-10 px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-shadow"
@@ -417,7 +354,7 @@ export default function UsuariosPage() {
                                     onChange={(e) => setCurrentUser({ ...currentUser, estado: e.target.value as "activo" | "suspendido" })}
                                 >
                                     <option value="activo">Activo</option>
-                                    <option value="suspendido">Suspendido</option>
+                                    <option value="suspendido">Suspendidos</option>
                                 </select>
                             </div>
                         </div>

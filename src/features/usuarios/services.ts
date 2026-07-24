@@ -4,13 +4,7 @@ import { Usuario } from "./types"
 export async function getUsuarios(): Promise<Usuario[]> {
   const { data, error } = await supabase
     .from("clientes")
-    .select(`
-      *,
-      categorias (
-        id,
-        nombre_categoria
-      )
-    `)
+    .select("*")
     .order("created_at", { ascending: false })
 
   if (error) throw error

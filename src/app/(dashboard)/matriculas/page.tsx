@@ -66,9 +66,9 @@ export default function MatriculasPage() {
         return category?.nombre_categoria || "Sin categoría";
     };
 
-    const getClientNameAndAddress = (cliente_id: string) => {
+    const getClientNameAndCedula = (cliente_id: string) => {
         const client = usuarios.find((u) => u.id === cliente_id);
-        return client ? `${client.nombre} (${client.direccion})` : "Desconocido";
+        return client ? `${client.nombre} (CC: ${client.cedula})` : "Desconocido";
     };
 
     const openModal = (mode: "create" | "edit" | "delete", matricula?: Matricula) => {
@@ -281,7 +281,7 @@ export default function MatriculasPage() {
                             {/* Fila de detalles: Cliente y Dirección */}
                             <div className="border-t border-slate-100 pt-3 space-y-2">
                                 <div>
-                                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Cliente</p>
+                                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Usuario</p>
                                     <p className="text-sm font-semibold text-slate-800 mt-0.5">{mat.cliente?.nombre || "N/A"}</p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
@@ -332,7 +332,7 @@ export default function MatriculasPage() {
                     <TableHeader>
                         <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
                             <TableHead className="w-32"># Matrícula</TableHead>
-                            <TableHead>Cliente</TableHead>
+                            <TableHead>Usuario</TableHead>
                             <TableHead>Dirección / Lote</TableHead>
                             <TableHead>Categoría</TableHead>
                             <TableHead>Estado</TableHead>
@@ -433,6 +433,7 @@ export default function MatriculasPage() {
                             </div>
                         )}
                         <div className="space-y-4 max-h-[60vh] overflow-y-auto px-1">
+                            <p className="text-sm text-slate-600">Al crear una Matricula automáticamente se creará una factura con el valor de $70.000 </p>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Número de Matrícula</label>
                                 <input
@@ -446,7 +447,7 @@ export default function MatriculasPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Cliente</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Usuario</label>
                                 <select
                                     required
                                     className="w-full h-10 px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-shadow"
@@ -467,10 +468,10 @@ export default function MatriculasPage() {
                                         });
                                     }}
                                 >
-                                    <option value="">Seleccione un cliente</option>
+                                    <option value="">Seleccione un usuario</option>
                                     {sortedUsuarios.map((user) => (
                                         <option key={user.id} value={user.id}>
-                                            {user.nombre} ({user.direccion})
+                                            {user.nombre} (CC: {user.cedula})
                                         </option>
                                     ))}
                                 </select>

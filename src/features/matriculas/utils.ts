@@ -32,9 +32,9 @@ export function generateNextNumeroMatricula(clienteNombre: string, existingMatri
     }
   }
 
-  // 3. Increment the max number and format as 6 digits (padded with zeros)
+  // 3. Increment the max number and format as 3 digits (padded with zeros)
   const nextNumber = maxNumber + 1;
-  const paddedNumber = String(nextNumber).padStart(6, "0");
+  const paddedNumber = String(nextNumber).padStart(3, "0");
 
   return `${prefix}${paddedNumber}`;
 }
