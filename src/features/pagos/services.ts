@@ -53,37 +53,18 @@ export async function buscarClientes(query: string) {
 }
 
 
-// 💰 Obtener deuda de una matrícula o cliente
+// 💰 Obtener deuda de una matrícula
 export async function obtenerDeudaMatricula(matriculaId?: string | null, clienteId?: string | null) {
-  if (!matriculaId && !clienteId) {
+  if (!matriculaId) {
     return { facturas: [], deuda_total: 0 }
   }
 
-  let pendingQuery = supabase
+  const { data, error } = await supabase
     .from("facturas_con_saldo")
     .select("id, periodo, total, saldo_pendiente, fecha_vencimiento, matricula_id")
+    .eq("matricula_id", matriculaId)
     .gt("saldo_pendiente", 0)
     .order("periodo", { ascending: true })
-
-  if (matriculaId) {
-    pendingQuery = pendingQuery.or(`matricula_id.eq.${matriculaId}${clienteId ? `,and(matricula_id.is.null,cliente_id.eq.${clienteId})` : ""}`)
-  } else if (clienteId) {
-    pendingQuery = pendingQuery.eq("cliente_id", clienteId)
-  }
-
-  let { data, error } = await pendingQuery
-
-  if (error && matriculaId) {
-    const fallback = await supabase
-      .from("facturas_con_saldo")
-      .select("id, periodo, total, saldo_pendiente, fecha_vencimiento, matricula_id")
-      .eq("matricula_id", matriculaId)
-      .gt("saldo_pendiente", 0)
-      .order("periodo", { ascending: true })
-
-    data = fallback.data
-    error = fallback.error
-  }
 
   if (error) {
     console.error("Error obteniendo deuda de la matrícula:", error)
@@ -191,19 +172,16 @@ export async function registrarPagoAdelantado(input: {
   const isPorCuotas = !!input.meses
 
   // 2. Procesar facturas pendientes existentes
-  let pendingQuery = supabase
-    .from("facturas_con_saldo")
-    .select("*")
-    .gt("saldo_pendiente", 0)
-    .order("periodo", { ascending: true })
-
-  if (input.matricula_id) {
-    pendingQuery = pendingQuery.or(`matricula_id.eq.${input.matricula_id},and(matricula_id.is.null,cliente_id.eq.${input.cliente_id})`)
-  } else {
-    pendingQuery = pendingQuery.eq("cliente_id", input.cliente_id)
+  if (!input.matricula_id) {
+    throw new Error("Se requiere una matrícula para registrar el pago.")
   }
 
-  const { data: facturasPendientes, error: pError } = await pendingQuery
+  const { data: facturasPendientes, error: pError } = await supabase
+    .from("facturas_con_saldo")
+    .select("*")
+    .eq("matricula_id", input.matricula_id)
+    .gt("saldo_pendiente", 0)
+    .order("periodo", { ascending: true })
 
   if (pError) throw pError
 
@@ -250,19 +228,12 @@ export async function registrarPagoAdelantado(input: {
 
   // 3. Crear facturas futuras si aún queda saldo o meses
   if ((isPorCuotas && mesesRestantes > 0) || (!isPorCuotas && montoDisponible > 0)) {
-    let queryUltima = supabase
+    const { data: ultimaFactura } = await supabase
       .from("facturas")
       .select("periodo")
+      .eq("matricula_id", input.matricula_id)
       .order("periodo", { ascending: false })
       .limit(1)
-
-    if (input.matricula_id) {
-      queryUltima = queryUltima.eq("matricula_id", input.matricula_id)
-    } else {
-      queryUltima = queryUltima.eq("cliente_id", input.cliente_id)
-    }
-
-    const { data: ultimaFactura } = await queryUltima
 
     let startPeriod = new Date().toISOString().slice(0, 7)
     if (ultimaFactura && ultimaFactura.length > 0) {
@@ -292,16 +263,12 @@ export async function registrarPagoAdelantado(input: {
       if (valorAPagar <= 0) break
 
       const facturaInsertObj: any = {
-        cliente_id: input.cliente_id,
+        matricula_id: input.matricula_id,
         periodo,
         valor_base: valorMensual,
         total: valorMensual,
         estado: valorAPagar >= valorMensual ? "pagado" : "pendiente",
         fecha_vencimiento: new Date(currentYear, currentMonth - 1, 20).toISOString().split("T")[0]
-      }
-
-      if (input.matricula_id) {
-        facturaInsertObj.matricula_id = input.matricula_id
       }
 
       // Insertar factura

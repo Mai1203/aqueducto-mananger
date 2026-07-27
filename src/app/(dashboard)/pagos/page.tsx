@@ -35,6 +35,7 @@ export default function PagosPage() {
     const [meses, setMeses] = useState(1)
     const [adelantadoType, setAdelantadoType] = useState<"meses" | "monto">("meses")
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [montoError, setMontoError] = useState<string | null>(null)
 
     // Tarifa mensual efectiva de la matrícula seleccionada
     const valorMensual = matriculaSeleccionada?.valor_mensual ?? 0
@@ -55,6 +56,7 @@ export default function PagosPage() {
         setAdelantadoType("meses")
         setMeses(1)
         setMonto(0)
+        setMontoError(null)
     }
 
     const handleLimpiarCliente = () => {
@@ -62,7 +64,33 @@ export default function PagosPage() {
         setQuery("")
         buscar("")
         setMonto(0)
+        setMontoError(null)
         setIsAdelantado(false)
+    }
+
+    const getEstadoBadge = (estado?: "activa" | "suspendida" | "inactiva") => {
+        switch (estado) {
+            case "activa":
+                return (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200/50">
+                        Activa
+                    </span>
+                )
+            case "suspendida":
+                return (
+                    <span className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full border border-amber-200/50">
+                        Suspendida
+                    </span>
+                )
+            case "inactiva":
+                return (
+                    <span className="text-[10px] font-bold text-rose-700 bg-rose-100/80 px-2 py-0.5 rounded-full border border-rose-200/50">
+                        Inactiva
+                    </span>
+                )
+            default:
+                return null
+        }
     }
 
     return (
@@ -161,7 +189,7 @@ export default function PagosPage() {
                                 <div>
                                     <h3 className="font-bold text-amber-900">Cliente sin matrículas registradas</h3>
                                     <p className="text-sm text-amber-800 mt-1 leading-relaxed">
-                                        El usuario <strong>{clienteSeleccionado.nombre}</strong> no posee matrículas de agua activas. Para registrar pagos o generar cobros, es necesario asignar al menos una matrícula en el módulo de <strong>Matrículas</strong>.
+                                        El usuario <strong>{clienteSeleccionado.nombre}</strong> no posee matrículas de agua registradas. Para registrar pagos o generar cobros, es necesario asignar al menos una matrícula en el módulo de <strong>Matrículas</strong>.
                                     </p>
                                 </div>
                             </CardContent>
@@ -228,11 +256,14 @@ export default function PagosPage() {
                                                                     <span className="font-bold text-slate-900 text-sm font-mono">
                                                                         #{mat.numero_matricula}
                                                                     </span>
-                                                                    {isSelected && (
-                                                                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                                                                            Seleccionada
-                                                                        </span>
-                                                                    )}
+                                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                                        {getEstadoBadge(mat.estado)}
+                                                                        {isSelected && (
+                                                                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                                                                                Seleccionada
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                                 {mat.direccion_lote && (
                                                                     <p className="text-xs text-slate-500 truncate mt-1">
@@ -256,11 +287,14 @@ export default function PagosPage() {
                                                 <div className="flex items-center gap-2.5 min-w-0">
                                                     <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
                                                     <div className="truncate">
-                                                        <p className="text-xs font-bold text-emerald-950 font-mono">
-                                                            Matrícula #{matriculaSeleccionada?.numero_matricula}
-                                                        </p>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-xs font-bold text-emerald-950 font-mono">
+                                                                Matrícula #{matriculaSeleccionada?.numero_matricula}
+                                                            </p>
+                                                            {getEstadoBadge(matriculaSeleccionada?.estado)}
+                                                        </div>
                                                         {matriculaSeleccionada?.direccion_lote && (
-                                                            <p className="text-[11px] text-emerald-700 truncate">
+                                                            <p className="text-[11px] text-emerald-700 truncate mt-0.5">
                                                                 {matriculaSeleccionada.direccion_lote}
                                                             </p>
                                                         )}
@@ -269,6 +303,24 @@ export default function PagosPage() {
                                                 <span className="text-xs font-bold text-emerald-800 bg-emerald-100/90 px-2.5 py-1 rounded-lg shrink-0">
                                                     Tarifa: ${valorMensual.toLocaleString()}/mes
                                                 </span>
+                                            </div>
+                                        )}
+
+                                        {/* ALERTA DE ESTADO SI LA MATRÍCULA SELECCIONADA NO ESTÁ ACTIVA */}
+                                        {matriculaSeleccionada?.estado === "inactiva" && (
+                                            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-3 text-rose-900 text-xs font-medium">
+                                                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                                                <div>
+                                                    <strong>Atención:</strong> Esta matrícula está marcada como <strong className="uppercase font-bold text-rose-700">Inactiva</strong>.
+                                                </div>
+                                            </div>
+                                        )}
+                                        {matriculaSeleccionada?.estado === "suspendida" && (
+                                            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-amber-900 text-xs font-medium">
+                                                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                                                <div>
+                                                    <strong>Atención:</strong> Esta matrícula se encuentra actualmente <strong className="uppercase font-bold text-amber-700">Suspendida</strong>.
+                                                </div>
                                             </div>
                                         )}
 
@@ -366,6 +418,16 @@ export default function PagosPage() {
                                             className="space-y-4"
                                             onSubmit={async (e) => {
                                                 e.preventDefault()
+
+                                                // Validaciones de monto
+                                                if (!isAdelantado || (isAdelantado && adelantadoType === "monto")) {
+                                                    if (!monto || monto <= 0) return
+                                                    if (monto % 1000 !== 0) {
+                                                        setMontoError("El monto debe ser un valor en miles (múltiplos de 1.000).")
+                                                        return
+                                                    }
+                                                }
+
                                                 if (!isAdelantado && (!facturas.length || !monto)) return
                                                 if (isAdelantado && adelantadoType === "meses" && !meses) return
                                                 if (isAdelantado && adelantadoType === "monto" && !monto) return
@@ -469,14 +531,35 @@ export default function PagosPage() {
                                                             type="number"
                                                             value={monto || ""}
                                                             placeholder="0"
-                                                            onChange={(e) => setMonto(Number(e.target.value))}
-                                                            className={`w-full pl-7 pr-4 py-2.5 border-2 rounded-lg text-slate-900 font-semibold focus:outline-none transition-colors ${isAdelantado ? "border-emerald-100 focus:border-emerald-400" : "border-slate-200 focus:border-emerald-400"}`}
+                                                            onChange={(e) => {
+                                                                const val = Number(e.target.value)
+                                                                setMonto(val)
+                                                                if (val % 1000 !== 0) {
+                                                                    setMontoError("El monto debe ser en pesos colombianos.")
+                                                                } else {
+                                                                    setMontoError(null)
+                                                                }
+                                                            }}
+                                                            className={`w-full pl-7 pr-4 py-2.5 border-2 rounded-lg text-slate-900 font-semibold focus:outline-none transition-colors ${
+                                                                montoError
+                                                                    ? "border-rose-400 focus:border-rose-500 bg-rose-50/30"
+                                                                    : isAdelantado
+                                                                        ? "border-emerald-100 focus:border-emerald-400"
+                                                                        : "border-slate-200 focus:border-emerald-400"
+                                                            }`}
                                                         />
                                                     </div>
-                                                    <div className="mt-2 text-[10px] text-slate-400 font-medium flex items-center gap-1">
-                                                        <History className="w-3 h-3" />
-                                                        Se pagarán primero las facturas pendientes de la matrícula.
-                                                    </div>
+                                                    {montoError ? (
+                                                        <p className="mt-1.5 text-[11px] text-rose-600 font-medium flex items-center gap-1">
+                                                            <AlertCircle className="w-3 h-3 shrink-0" />
+                                                            {montoError}
+                                                        </p>
+                                                    ) : (
+                                                        <div className="mt-2 text-[10px] text-slate-400 font-medium flex items-center gap-1">
+                                                            <History className="w-3 h-3" />
+                                                            Solo valores en pesos colombianos · Se pagarán primero las facturas pendientes.
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
 
@@ -508,7 +591,13 @@ export default function PagosPage() {
 
                                             <Button
                                                 type="submit"
-                                                disabled={isSubmitting || (!isAdelantado && (!monto || !facturas.length)) || (isAdelantado && !monto)}
+                                                disabled={
+                                                    isSubmitting ||
+                                                    !!montoError ||
+                                                    (!isAdelantado && (!monto || !facturas.length)) ||
+                                                    (isAdelantado && adelantadoType === "monto" && !monto) ||
+                                                    (isAdelantado && adelantadoType === "meses" && !meses)
+                                                }
                                                 className={`w-full h-11 text-sm font-semibold transition-all ${isAdelantado ? 'bg-emerald-500 hover:bg-emerald-600 shadow-sm shadow-emerald-200' : 'bg-slate-900 hover:bg-slate-800'}`}
                                             >
                                                 {isSubmitting ? (

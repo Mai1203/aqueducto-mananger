@@ -18,11 +18,11 @@ export function usePagos() {
         enabled: searchQuery.length > 0,
     })
 
-    // Obtener deuda de la matrícula o cliente seleccionado
+    // Obtener deuda de la matrícula seleccionada
     const { data: deudaData } = useQuery({
-        queryKey: ["deuda", clienteSeleccionado?.id, matriculaSeleccionada?.id],
-        queryFn: () => obtenerDeudaMatricula(matriculaSeleccionada?.id, clienteSeleccionado?.id),
-        enabled: !!clienteSeleccionado?.id,
+        queryKey: ["deuda", matriculaSeleccionada?.id],
+        queryFn: () => obtenerDeudaMatricula(matriculaSeleccionada?.id),
+        enabled: !!matriculaSeleccionada?.id,
     })
 
     // Mutación para pago simple
