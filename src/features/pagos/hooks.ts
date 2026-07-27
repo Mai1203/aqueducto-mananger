@@ -2,13 +2,14 @@
 
 import { useState, useCallback } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { buscarClientes, obtenerDeudaCliente, registrarPago, registrarPagoAdelantado } from "./services"
-import { ClienteBusqueda } from "./types"
+import { buscarClientes, obtenerDeudaMatricula, registrarPago, registrarPagoAdelantado } from "./services"
+import { ClienteBusqueda, MatriculaCliente } from "./types"
 
 export function usePagos() {
     const queryClient = useQueryClient()
     const [searchQuery, setSearchQuery] = useState("")
     const [clienteSeleccionado, setClienteSeleccionado] = useState<ClienteBusqueda | null>(null)
+    const [matriculaSeleccionada, setMatriculaSeleccionada] = useState<MatriculaCliente | null>(null)
 
     // Búsqueda de clientes con TanStack Query
     const { data: searchResults = [] } = useQuery({
@@ -17,10 +18,10 @@ export function usePagos() {
         enabled: searchQuery.length > 0,
     })
 
-    // Obtener deuda del cliente seleccionado
+    // Obtener deuda de la matrícula o cliente seleccionado
     const { data: deudaData } = useQuery({
-        queryKey: ["clientes", "deuda", clienteSeleccionado?.id],
-        queryFn: () => obtenerDeudaCliente(clienteSeleccionado!.id),
+        queryKey: ["deuda", clienteSeleccionado?.id, matriculaSeleccionada?.id],
+        queryFn: () => obtenerDeudaMatricula(matriculaSeleccionada?.id, clienteSeleccionado?.id),
         enabled: !!clienteSeleccionado?.id,
     })
 
@@ -29,7 +30,7 @@ export function usePagos() {
         mutationFn: registrarPago,
         onSuccess: () => {
             if (clienteSeleccionado) {
-                queryClient.invalidateQueries({ queryKey: ["clientes", "deuda", clienteSeleccionado.id] })
+                queryClient.invalidateQueries({ queryKey: ["deuda", clienteSeleccionado.id] })
             }
             queryClient.invalidateQueries({ queryKey: ["dashboard"] })
         },
@@ -40,7 +41,7 @@ export function usePagos() {
         mutationFn: registrarPagoAdelantado,
         onSuccess: () => {
             if (clienteSeleccionado) {
-                queryClient.invalidateQueries({ queryKey: ["clientes", "deuda", clienteSeleccionado.id] })
+                queryClient.invalidateQueries({ queryKey: ["deuda", clienteSeleccionado.id] })
             }
             queryClient.invalidateQueries({ queryKey: ["dashboard"] })
         },
@@ -53,6 +54,15 @@ export function usePagos() {
     const seleccionarCliente = useCallback((cliente: ClienteBusqueda | null) => {
         setClienteSeleccionado(cliente)
         setSearchQuery("") // Limpiar búsqueda tras seleccionar
+        if (cliente && cliente.matriculas && cliente.matriculas.length > 0) {
+            setMatriculaSeleccionada(cliente.matriculas[0])
+        } else {
+            setMatriculaSeleccionada(null)
+        }
+    }, [])
+
+    const seleccionarMatricula = useCallback((matricula: MatriculaCliente | null) => {
+        setMatriculaSeleccionada(matricula)
     }, [])
 
     const pagar = async (
@@ -77,6 +87,7 @@ export function usePagos() {
         if (!clienteSeleccionado) return
         await pagarAdelantadoMutation.mutateAsync({
             cliente_id: clienteSeleccionado.id,
+            matricula_id: matriculaSeleccionada?.id,
             ...params,
             metodo_pago: metodo,
             registrado_por: usuarioId,
@@ -86,12 +97,14 @@ export function usePagos() {
     return {
         clientes: searchResults,
         clienteSeleccionado,
+        matriculaSeleccionada,
         deuda: deudaData?.deuda_total || 0,
         facturas: deudaData?.facturas || [],
         buscar,
         seleccionarCliente,
+        seleccionarMatricula,
         pagar,
         pagarAdelantado,
         loading: pagarMutation.isPending || pagarAdelantadoMutation.isPending
     }
-}
+}
