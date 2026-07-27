@@ -29,8 +29,8 @@ export function usePagos() {
     const pagarMutation = useMutation({
         mutationFn: registrarPago,
         onSuccess: () => {
-            if (clienteSeleccionado) {
-                queryClient.invalidateQueries({ queryKey: ["deuda", clienteSeleccionado.id] })
+            if (matriculaSeleccionada) {
+                queryClient.invalidateQueries({ queryKey: ["deuda", matriculaSeleccionada.id] })
             }
             queryClient.invalidateQueries({ queryKey: ["dashboard"] })
         },
@@ -40,8 +40,8 @@ export function usePagos() {
     const pagarAdelantadoMutation = useMutation({
         mutationFn: registrarPagoAdelantado,
         onSuccess: () => {
-            if (clienteSeleccionado) {
-                queryClient.invalidateQueries({ queryKey: ["deuda", clienteSeleccionado.id] })
+            if (matriculaSeleccionada) {
+                queryClient.invalidateQueries({ queryKey: ["deuda", matriculaSeleccionada.id] })
             }
             queryClient.invalidateQueries({ queryKey: ["dashboard"] })
         },
