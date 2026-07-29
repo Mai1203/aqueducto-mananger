@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, Plus, Edit2, Trash2, AlertTriangle, MapPin } from "lucide-react";
+import { Search, Plus, Edit2, Trash2, AlertTriangle, MapPin, Settings, BadgeDollarSign } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 
 import {
@@ -17,12 +17,14 @@ import { Matricula } from "@/features/matriculas/types";
 import { generateNextNumeroMatricula } from "@/features/matriculas/utils";
 import { useUsuarios } from "@/features/usuarios/hooks";
 import { useCategories } from "@/features/categorias/hooks";
+import { useConfiguracionFacturacion } from "@/features/configuracion_facturacion/hooks";
 import Loading from "./loading";
 
 export default function MatriculasPage() {
     const { matriculas, loading: loadingMatriculas, add, update, remove } = useMatriculas();
     const { usuarios, loading: loadingUsuarios } = useUsuarios();
     const { categories, loading: loadingCategories } = useCategories();
+    const { config, loading: loadingConfig, update: updateConfig } = useConfiguracionFacturacion();
     const { toast } = useToast();
 
     const [searchTerm, setSearchTerm] = useState("");
@@ -33,6 +35,13 @@ export default function MatriculasPage() {
     const [modalMode, setModalMode] = useState<"create" | "edit" | "delete">("create");
     const [currentMatricula, setCurrentMatricula] = useState<Partial<Matricula>>({});
     const [formError, setFormError] = useState<string | null>(null);
+
+    const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+    const [configValues, setConfigValues] = useState({
+        valor_matricula: 0,
+        dias_vencimiento_matricula: 8,
+    });
+    const [configError, setConfigError] = useState<string | null>(null);
 
     const loading = loadingMatriculas || loadingUsuarios || loadingCategories;
 
@@ -156,6 +165,49 @@ export default function MatriculasPage() {
         }
     };
 
+    const openConfigModal = () => {
+        if (config) {
+            setConfigValues({
+                valor_matricula: config.valor_matricula,
+                dias_vencimiento_matricula: config.dias_vencimiento_matricula,
+            });
+        }
+        setConfigError(null);
+        setIsConfigModalOpen(true);
+    };
+
+    const closeConfigModal = () => {
+        setIsConfigModalOpen(false);
+        setConfigError(null);
+    };
+
+    const handleSaveConfig = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setConfigError(null);
+
+        if (configValues.valor_matricula <= 0) {
+            setConfigError("El valor de matrícula debe ser mayor a 0.");
+            return;
+        }
+        if (configValues.valor_matricula % 1000 !== 0) {
+            setConfigError("El valor de matrícula debe ser en pesos Colombianos sin decimales (Múltiplo de 1000).");
+            return;
+        }
+
+        try {
+            await updateConfig({
+                valor_matricula: configValues.valor_matricula,
+                dias_vencimiento_matricula: configValues.dias_vencimiento_matricula,
+            });
+            toast({ type: "success", title: "Configuración guardada", description: "Los cambios fueron guardados exitosamente." });
+            closeConfigModal();
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Ocurrió un error inesperado.";
+            setConfigError(msg);
+            toast({ type: "error", title: "Error al guardar", description: msg });
+        }
+    };
+
     const formatDate = (dateStr?: string) => {
         if (!dateStr) return "-";
         
@@ -210,10 +262,21 @@ export default function MatriculasPage() {
                     <h1 className="text-2xl font-bold tracking-tight text-slate-900">Matrículas</h1>
                     <p className="text-sm text-slate-500 mt-1">Gestiona las conexiones y suscripciones del acueducto.</p>
                 </div>
-                <Button onClick={() => openModal("create")} className="shrink-0 flex items-center gap-2">
-                    <Plus className="w-4 h-4" />
-                    Nueva Matrícula
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                    <Button onClick={() => openModal("create")} className="flex items-center gap-2">
+                        <Plus className="w-4 h-4" />
+                        Nueva Matrícula
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={openConfigModal}
+                        className="flex items-center gap-2"
+                    >
+                        <BadgeDollarSign className="w-4 h-4" />
+                        Valor Matricula
+                    </Button>
+                </div>
             </div>
 
             {/* Filters */}
@@ -433,7 +496,7 @@ export default function MatriculasPage() {
                             </div>
                         )}
                         <div className="space-y-4 max-h-[60vh] overflow-y-auto px-1">
-                            <p className="text-sm text-slate-600">Al crear una Matricula automáticamente se creará una factura con el valor de $70.000 </p>
+                            <p className="text-sm text-slate-600">Al crear una Matricula automáticamente se creará una factura con el valor pre-establecido</p>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Número de Matrícula</label>
                                 <input
@@ -549,6 +612,55 @@ export default function MatriculasPage() {
                         </div>
                     </form>
                 )}
+            </Modal>
+
+            {/* Modal de Configuración */}
+            <Modal
+                isOpen={isConfigModalOpen}
+                onClose={closeConfigModal}
+                title="Configuración de Facturación"
+            >
+                <form onSubmit={handleSaveConfig} className="space-y-4">
+                    {configError && (
+                        <div className="flex items-start gap-3 p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-800">
+                            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-rose-500" />
+                            <p className="text-sm font-medium">{configError}</p>
+                        </div>
+                    )}
+                    <div className="space-y-4 max-h-[60vh] overflow-y-auto px-1">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Valor de Matrícula</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                required
+                                className="w-full h-10 px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-shadow"
+                                value={configValues.valor_matricula}
+                                onChange={(e) => setConfigValues({ ...configValues, valor_matricula: parseFloat(e.target.value) || 0 })}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Días de Vencimiento</label>
+                            <input
+                                type="number"
+                                min="1"
+                                required
+                                className="w-full h-10 px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-shadow"
+                                value={configValues.dias_vencimiento_matricula}
+                                onChange={(e) => setConfigValues({ ...configValues, dias_vencimiento_matricula: parseInt(e.target.value) || 8 })}
+                            />
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                        <Button type="button" variant="outline" onClick={closeConfigModal}>
+                            Cancelar
+                        </Button>
+                        <Button type="submit">
+                            Guardar Configuración
+                        </Button>
+                    </div>
+                </form>
             </Modal>
         </div>
     );
