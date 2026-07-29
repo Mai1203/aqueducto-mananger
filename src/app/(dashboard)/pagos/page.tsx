@@ -283,25 +283,23 @@ export default function PagosPage() {
 
                                         {/* SI SOLO TIENE 1 MATRÍCULA */}
                                         {clienteSeleccionado.matriculas.length === 1 && (
-                                            <div className="p-3 bg-emerald-50/80 rounded-xl border border-emerald-200/70 flex items-center justify-between gap-3">
-                                                <div className="flex items-center gap-2.5 min-w-0">
-                                                    <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-                                                    <div className="truncate">
-                                                        <div className="flex items-center gap-2">
-                                                            <p className="text-xs font-bold text-emerald-950 font-mono">
-                                                                Matrícula #{matriculaSeleccionada?.numero_matricula}
-                                                            </p>
-                                                            {getEstadoBadge(matriculaSeleccionada?.estado)}
-                                                        </div>
-                                                        {matriculaSeleccionada?.direccion_lote && (
-                                                            <p className="text-[11px] text-emerald-700 truncate mt-0.5">
-                                                                {matriculaSeleccionada.direccion_lote}
-                                                            </p>
-                                                        )}
+                                            <div className="p-2.5 bg-emerald-50/80 rounded-xl border border-emerald-200/70 flex items-center gap-2 overflow-hidden">
+                                                <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                                                <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        <p className="text-xs font-bold text-emerald-950 font-mono truncate">
+                                                            #{matriculaSeleccionada?.numero_matricula}
+                                                        </p>
+                                                        {getEstadoBadge(matriculaSeleccionada?.estado)}
                                                     </div>
+                                                    {matriculaSeleccionada?.direccion_lote && (
+                                                        <p className="text-[11px] text-emerald-700 truncate">
+                                                            {matriculaSeleccionada.direccion_lote}
+                                                        </p>
+                                                    )}
                                                 </div>
-                                                <span className="text-xs font-bold text-emerald-800 bg-emerald-100/90 px-2.5 py-1 rounded-lg shrink-0">
-                                                    Tarifa: ${valorMensual.toLocaleString()}/mes
+                                                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-lg shrink-0 ml-2">
+                                                    ${valorMensual.toLocaleString()}/mes
                                                 </span>
                                             </div>
                                         )}
