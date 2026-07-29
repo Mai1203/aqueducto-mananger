@@ -57,9 +57,12 @@ export async function getTopMorosos(): Promise<ClienteMoroso[]> {
     .from("facturas")
     .select(`
       total,
-      clientes (
-        id,
-        nombre
+      matriculas (
+        cliente_id,
+        clientes (
+          id,
+          nombre
+        )
       )
     `)
     .eq("estado", "pendiente")
@@ -72,12 +75,11 @@ export async function getTopMorosos(): Promise<ClienteMoroso[]> {
 
   if (!data) return []
 
-  // Agrupar por cliente
   const grouped: Record<string, { nombre: string; total_deuda: number; facturas_pendientes: number }> = {}
 
   data.forEach((f: any) => {
-    const clienteId = f.clientes?.id
-    const nombre = f.clientes?.nombre ?? "Desconocido"
+    const clienteId = f.matriculas?.clientes?.id
+    const nombre = f.matriculas?.clientes?.nombre ?? "Desconocido"
     if (!clienteId) return
 
     if (!grouped[clienteId]) {
@@ -88,7 +90,7 @@ export async function getTopMorosos(): Promise<ClienteMoroso[]> {
   })
 
   return Object.entries(grouped)
-    .map(([id, data]) => ({ id, ...data }))
+    .map(([id, clientData]) => ({ id, ...clientData }))
     .sort((a, b) => b.total_deuda - a.total_deuda)
     .slice(0, 5)
 }
@@ -99,9 +101,12 @@ export async function getReportePendientesYMorosos(): Promise<{ morosos: Cliente
     .select(`
       total,
       fecha_vencimiento,
-      clientes (
-        id,
-        nombre
+      matriculas (
+        cliente_id,
+        clientes (
+          id,
+          nombre
+        )
       )
     `)
     .eq("estado", "pendiente")
@@ -119,8 +124,8 @@ export async function getReportePendientesYMorosos(): Promise<{ morosos: Cliente
   const today = new Date().toISOString().split("T")[0]
 
   data.forEach((f: any) => {
-    const clienteId = f.clientes?.id
-    const nombre = f.clientes?.nombre ?? "Desconocido"
+    const clienteId = f.matriculas?.clientes?.id
+    const nombre = f.matriculas?.clientes?.nombre ?? "Desconocido"
     if (!clienteId) return
 
     if (f.fecha_vencimiento < today) {
@@ -138,7 +143,6 @@ export async function getReportePendientesYMorosos(): Promise<{ morosos: Cliente
     }
   })
 
-  // Convert map to arrays
   const morososArray = Object.entries(groupedMorosos)
     .map(([id, clientData]) => ({ id, ...clientData }))
     .sort((a, b) => b.total_deuda - a.total_deuda)
