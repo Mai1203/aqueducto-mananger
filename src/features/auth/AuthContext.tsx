@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter, usePathname } from 'next/navigation'
 
-type UserRole = 'admin' | 'cajero' | null
+type UserRole = 'admin' | 'usuario' | null
 
 interface AuthContextType {
   user: any

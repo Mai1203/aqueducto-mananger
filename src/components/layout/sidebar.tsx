@@ -78,9 +78,9 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             <nav className="flex-1 px-4 space-y-6 overflow-y-auto">
                 {menuGroups.map((group) => {
                     const filteredItems = group.items.filter((item) => {
-                        if (role === "cajero") {
+                        if (role === "usuario") {
                             // Cajero NO puede ver Categorías ni Facturación ni Usuarios
-                            return item.href !== "/categorias" && item.href !== "/facturacion" && item.href !== "/usuarios";
+                            return item.href !== "/categorias" && item.href !== "/pagos" && item.href !== "/usuarios";
                         }
                         return true;
                     });
@@ -137,7 +137,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                     </div>
                     <div className="min-w-0">
                         <p className="text-sm font-semibold text-slate-900 truncate">
-                            {role === "admin" ? "Administrador" : "Cajero"}
+                            {role === "admin" ? "Administrador" : "Usuario"}
                         </p>
                         <p className="text-xs text-slate-500 truncate">
                             {user?.email}

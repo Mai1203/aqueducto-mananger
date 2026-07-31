@@ -41,7 +41,7 @@ export function Topbar({ title }: TopbarProps) {
 
                     <div className="hidden sm:flex flex-col leading-tight">
                         <span className="text-sm font-medium text-slate-800">
-                            {role === "admin" ? "Administrador" : "Cajero"}
+                            {role === "admin" ? "Administrador" : "Usuario"}
                         </span>
                         <span className="text-xs text-slate-500 truncate max-w-[140px]">
                             {user?.email}
