@@ -354,22 +354,22 @@ export default function MatriculasPage() {
                                 </Badge>
                             </div>
 
-                            {/* Fila de detalles: Cliente y Dirección */}
-                            <div className="border-t border-slate-100 pt-3 space-y-2">
-                                <div>
-                                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Usuario</p>
-                                    <p className="text-sm font-semibold text-slate-800 mt-0.5">{mat.cliente?.nombre || "N/A"}</p>
+                            {/* Usuario y Dirección destacados */}
+                            <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+                                <div className="flex items-start gap-2">
+                                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wide shrink-0 pt-0.5">Usuario</span>
+                                    <p className="text-sm font-semibold text-slate-900 leading-snug">{mat.cliente?.nombre || "N/A"}</p>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Dirección / Lote</p>
-                                        <p className="text-xs text-slate-600 mt-0.5 leading-snug">{mat.direccion_lote || "N/A"}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Categoría</p>
-                                        <p className="text-xs text-slate-600 mt-0.5">{mat.categoria?.nombre_categoria || getCategoryName(mat.categoria_id)}</p>
-                                    </div>
+                                <div className="flex items-start gap-2">
+                                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wide shrink-0 pt-0.5">Dirección</span>
+                                    <p className="text-sm font-semibold text-slate-800 leading-snug">{mat.direccion_lote || "N/A"}</p>
                                 </div>
+                            </div>
+
+                            {/* Categoría */}
+                            <div className="flex items-center justify-between text-xs">
+                                <span className="text-slate-400">Categoría</span>
+                                <span className="font-medium text-slate-700">{mat.categoria?.nombre_categoria || getCategoryName(mat.categoria_id)}</span>
                             </div>
 
                             {/* Acciones */}
