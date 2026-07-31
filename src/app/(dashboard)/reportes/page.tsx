@@ -2,11 +2,16 @@
 
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart3, Download, TrendingUp, Loader2 } from "lucide-react"
+import { BarChart3, Download, TrendingUp, Loader2, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useReportes } from "@/features/reportes/hooks"
-import { exportarPDF, exportarExcel } from "@/features/reportes/exports"
-import { getReportePendientesYMorosos } from "@/features/reportes/services"
+import { exportarPDF, exportarExcel, generarFacturaEmpresarialPDF } from "@/features/reportes/exports"
+import { getReportePendientesYMorosos, getFacturasPendientesPorMatricula } from "@/features/reportes/services"
+import { useAuth } from "@/features/auth/AuthContext"
+import { useMatriculas } from "@/features/matriculas/hooks"
+import { useUsuarios } from "@/features/usuarios/hooks"
+import { useToast } from "@/components/ui/toast"
+import { Modal } from "@/components/ui/modal"
 import {
   BarChart,
   Bar,
@@ -38,8 +43,17 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function ReportesPage() {
   const { ingresos, morosos, loading, error } = useReportes()
+  const { role } = useAuth()
+  const { matriculas } = useMatriculas()
+  const { usuarios } = useUsuarios()
+  const { toast } = useToast()
   const [exportandoPDF, setExportandoPDF] = useState(false)
   const [exportandoExcel, setExportandoExcel] = useState(false)
+  const [modalAbierto, setModalAbierto] = useState(false)
+  const [generandoFactura, setGenerandoFactura] = useState(false)
+  const [usuarioSeleccionado, setUsuarioSeleccionado] = useState("")
+  const [matriculaSeleccionada, setMatriculaSeleccionada] = useState("")
+  const [busquedaUsuario, setBusquedaUsuario] = useState("")
 
   const handleExportPDF = async () => {
     setExportandoPDF(true)
@@ -58,6 +72,47 @@ export default function ReportesPage() {
       await exportarExcel(ingresos, todosMorosos, todosPendientes)
     } finally {
       setExportandoExcel(false)
+    }
+  }
+
+  const handleGenerarFacturaEmpresarial = async () => {
+    if (!matriculaSeleccionada) {
+      toast({ type: "warning", title: "Selecciona una matrícula", description: "Debes elegir una matrícula para generar la factura." })
+      return
+    }
+
+    setGenerandoFactura(true)
+    try {
+      const facturas = await getFacturasPendientesPorMatricula(matriculaSeleccionada)
+
+      if (facturas.length === 0) {
+        toast({ type: "warning", title: "Sin facturas pendientes", description: "Esta matrícula no tiene facturas pendientes para generar." })
+        return
+      }
+
+      const matricula = matriculas.find((m) => m.id === matriculaSeleccionada)
+      const clienteNombre = matricula?.cliente?.nombre || usuarios.find((u) => u.id === matricula?.cliente_id)?.nombre || "Cliente sin nombre"
+      const numeroMatricula = matricula?.numero_matricula || "Sin número"
+
+      const total = facturas.reduce((sum, f) => sum + Number(f.total), 0)
+
+      await generarFacturaEmpresarialPDF({
+        cliente: clienteNombre,
+        numero_matricula: numeroMatricula,
+        facturas,
+        total,
+      })
+
+      toast({ type: "success", title: "Factura generada", description: "El documento PDF se ha descargado correctamente." })
+      setModalAbierto(false)
+      setUsuarioSeleccionado("")
+      setMatriculaSeleccionada("")
+      setBusquedaUsuario("")
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error al generar la factura empresarial."
+      toast({ type: "error", title: "Error", description: msg })
+    } finally {
+      setGenerandoFactura(false)
     }
   }
 
@@ -103,6 +158,15 @@ export default function ReportesPage() {
             }
             Exportar Excel
           </Button>
+          {role === "admin" && (
+            <Button
+              className="gap-2"
+              onClick={() => setModalAbierto(true)}
+            >
+              <FileText className="w-4 h-4" />
+              Generar Factura Empresarial
+            </Button>
+          )}
         </div>
       </div>
 
@@ -172,6 +236,75 @@ export default function ReportesPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Modal isOpen={modalAbierto} onClose={() => { setModalAbierto(false); setUsuarioSeleccionado(""); setMatriculaSeleccionada(""); setBusquedaUsuario(""); }} title="Generar Factura Empresarial">
+        <div className="space-y-4">
+          {!usuarioSeleccionado ? (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Buscar usuario</label>
+                <input
+                  type="text"
+                  placeholder="Escribe el nombre del usuario..."
+                  className="w-full h-10 px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-shadow"
+                  value={busquedaUsuario}
+                  onChange={(e) => setBusquedaUsuario(e.target.value)}
+                />
+              </div>
+              <div className="max-h-64 overflow-y-auto space-y-1 border border-slate-200 rounded-lg">
+                {usuarios
+                  .filter((u) => u.nombre.toLowerCase().includes(busquedaUsuario.toLowerCase()))
+                  .map((u) => (
+                    <button
+                      key={u.id}
+                      onClick={() => { setUsuarioSeleccionado(u.id); setBusquedaUsuario(""); }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-sky-50 hover:text-sky-700 transition-colors border-b border-slate-100 last:border-b-0"
+                    >
+                      {u.nombre}
+                    </button>
+                  ))}
+                {usuarios.filter((u) => u.nombre.toLowerCase().includes(busquedaUsuario.toLowerCase())).length === 0 && (
+                  <p className="text-xs text-slate-400 px-3 py-2">No se encontraron usuarios</p>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Matrícula</label>
+                <select
+                  className="w-full h-10 px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-shadow"
+                  value={matriculaSeleccionada}
+                  onChange={(e) => setMatriculaSeleccionada(e.target.value)}
+                >
+                  <option value="">Seleccione una matrícula</option>
+                  {matriculas
+                    .filter((m) => m.cliente_id === usuarioSeleccionado)
+                    .map((mat) => (
+                      <option key={mat.id} value={mat.id}>
+                        #{mat.numero_matricula} - {mat.direccion_lote || "Sin dirección"}
+                      </option>
+                    ))}
+                </select>
+                <p className="text-xs text-slate-400 mt-1">Se generará un documento con todas las facturas pendientes de la matrícula seleccionada.</p>
+              </div>
+              <div className="flex justify-between gap-3 pt-2">
+                <Button type="button" variant="outline" onClick={() => { setUsuarioSeleccionado(""); setMatriculaSeleccionada(""); }}>
+                  Volver
+                </Button>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onClick={() => { setModalAbierto(false); setUsuarioSeleccionado(""); setMatriculaSeleccionada(""); setBusquedaUsuario(""); }}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleGenerarFacturaEmpresarial} disabled={generandoFactura || !matriculaSeleccionada}>
+                    {generandoFactura ? "Generando..." : "Generar PDF"}
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
     </div>
   )
 }

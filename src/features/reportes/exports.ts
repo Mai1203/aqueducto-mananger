@@ -1,4 +1,5 @@
 import { IngresoMensual, ClienteMoroso } from "./types"
+import { Factura } from "@/features/facturacion/types"
 
 // ─── PDF Export ────────────────────────────────────────────────────────────────
 export async function exportarPDF(
@@ -171,4 +172,95 @@ export async function exportarExcel(
   XLSX.utils.book_append_sheet(wb, wsPendientes, "Usuarios Pendientes")
 
   XLSX.writeFile(wb, `reporte-acueducto-${anio}.xlsx`)
+}
+
+export async function generarFacturaEmpresarialPDF(data: {
+  cliente: string
+  numero_matricula: string
+  facturas: Factura[]
+  total: number
+}) {
+  const { default: jsPDF } = await import("jspdf")
+  const { default: autoTable } = await import("jspdf-autotable")
+
+  const doc = new jsPDF()
+  const fechaActual = new Date().toLocaleDateString("es-CO", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  })
+
+  const empresaNombre = "Acueducto San Francisco"
+  const empresaNit = "NIT: 900.123.456-7"
+  const empresaDireccion = "San Francisco Centro, Linares - Nariño"
+  const lugar = "San Francisco Centro"
+
+  // Encabezado empresa
+  doc.setFillColor(16, 185, 129)
+  doc.rect(0, 0, 210, 32, "F")
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(16)
+  doc.setFont("helvetica", "bold")
+  doc.text(empresaNombre, 14, 10)
+  doc.setFontSize(10)
+  doc.setFont("helvetica", "normal")
+  doc.text(`${empresaNit}  |  ${empresaDireccion}`, 14, 18)
+  doc.text(`Lugar y fecha: ${lugar}, ${fechaActual}`, 14, 26)
+
+  doc.setTextColor(30, 41, 59)
+
+  // Destinatario
+  doc.setFontSize(12)
+  doc.setFont("helvetica", "bold")
+  doc.text("Factura a nombre de:", 14, 42)
+  doc.setFont("helvetica", "normal")
+  doc.setFontSize(11)
+  doc.text(`${data.cliente}`, 14, 50)
+  doc.text(`Matrícula: ${data.numero_matricula}`, 14, 58)
+
+  // Tabla de facturas
+  autoTable(doc, {
+    startY: 66,
+    head: [["# Factura", "Período", "Valor Base", "Recargo", "Descuento", "Total"]],
+    body: data.facturas.map((f) => [
+      f.id.slice(0, 8).toUpperCase(),
+      f.periodo,
+      `$${f.valor_base.toLocaleString("es-CO")}`,
+      `$${f.recargo.toLocaleString("es-CO")}`,
+      `$${f.descuento.toLocaleString("es-CO")}`,
+      `$${f.total.toLocaleString("es-CO")}`,
+    ]),
+    headStyles: { fillColor: [15, 118, 110], textColor: 255, fontStyle: "bold" },
+    alternateRowStyles: { fillColor: [240, 253, 251] },
+    styles: { fontSize: 10, cellPadding: 4 },
+    columnStyles: {
+      2: { halign: "center" },
+      3: { halign: "right" },
+      4: { halign: "right" },
+      5: { halign: "right" },
+      6: { halign: "right", fontStyle: "bold" },
+    },
+  })
+
+  const finalY = (doc as any).lastAutoTable.finalY + 12
+
+  doc.setFontSize(12)
+  doc.setFont("helvetica", "bold")
+  doc.text(`Total a deber: $${data.total.toLocaleString("es-CO")}`, 14, finalY)
+
+  // Pie de página
+  const pageCount = (doc as any).internal.getNumberOfPages()
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i)
+    doc.setFontSize(8)
+    doc.setTextColor(148, 163, 184)
+    doc.text(
+      `Página ${i} de ${pageCount} — ${empresaNombre}`,
+      105,
+      doc.internal.pageSize.height - 8,
+      { align: "center" }
+    )
+  }
+
+  doc.save(`factura-empresarial-${data.numero_matricula}-${new Date().toISOString().slice(0, 10)}.pdf`)
 }

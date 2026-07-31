@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabaseClient"
 import { IngresoMensual, ClienteMoroso } from "./types"
+import { Factura } from "@/features/facturacion/types"
 
 export async function getIngresosMensuales(): Promise<IngresoMensual[]> {
   const currentYear = new Date().getFullYear()
@@ -152,4 +153,40 @@ export async function getReportePendientesYMorosos(): Promise<{ morosos: Cliente
     .sort((a, b) => b.total_deuda - a.total_deuda)
 
   return { morosos: morososArray, pendientes: pendientesArray }
+}
+
+export async function getFacturasPendientesPorMatricula(matriculaId: string): Promise<Factura[]> {
+  const { data, error } = await supabase
+    .from("facturas")
+    .select(`
+      id,
+      periodo,
+      valor_base,
+      recargo,
+      descuento,
+      total,
+      estado,
+      fecha_vencimiento,
+      fecha_generacion,
+      created_at,
+      matricula_id,
+      matricula:matriculas (
+        id,
+        numero_matricula,
+        cliente:clientes (
+          id,
+          nombre
+        )
+      )
+    `)
+    .eq("matricula_id", matriculaId)
+    .eq("estado", "pendiente")
+    .order("fecha_generacion", { ascending: true })
+
+  if (error) {
+    console.error("Error obteniendo facturas pendientes por matrícula:", error)
+    throw new Error("No se pudieron cargar las facturas pendientes")
+  }
+
+  return (data as unknown as Factura[]) || []
 }
