@@ -60,7 +60,7 @@ export async function middleware(request: NextRequest) {
 
     const role = perfil?.rol
 
-    const adminOnlyRoutes = ['/categorias', '/facturacion', '/usuarios']
+    const adminOnlyRoutes = ['/categorias', '/usuarios']
     const isAdminRoute = adminOnlyRoutes.some(route => pathname.startsWith(route))
 
     if (isAdminRoute && role !== 'admin') {

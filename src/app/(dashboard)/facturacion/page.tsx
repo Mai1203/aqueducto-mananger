@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, Zap, Filter } from "lucide-react";
+import { Search, Zap, Filter, AlertTriangle } from "lucide-react";
 import {
     Table, TableBody, TableCell, TableHead,
     TableHeader, TableRow,
@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { useFacturas } from "@/features/facturacion/hooks";
 import { generarFacturacion } from "@/features/facturacion/services";
+import { useAuth } from "@/features/auth/AuthContext";
 import Loading from "./loading";
 
 type EstadoFactura = "pendiente" | "pagado" | "vencida";
@@ -37,6 +38,7 @@ function formatPeriod(period: string) {
 export default function FacturacionPage() {
     const { facturas, loading, reload } = useFacturas();
     const { toast } = useToast();
+    const { role, loading: authLoading } = useAuth();
 
     const [searchTerm, setSearchTerm] = useState("");
     const [estadoFiltro, setEstadoFiltro] = useState<EstadoFiltro>("all");
@@ -81,7 +83,7 @@ export default function FacturacionPage() {
         }
     };
 
-    if (loading) return <Loading />;
+    if (loading || authLoading) return <Loading />;
 
     const rawMes = new Date().toLocaleString("es-CO", { month: "long" });
     const mesActual = rawMes.charAt(0).toUpperCase() + rawMes.slice(1);
@@ -103,13 +105,23 @@ export default function FacturacionPage() {
                 </div>
                 <Button
                     onClick={handleGenerarFacturacion}
-                    disabled={generating}
+                    disabled={generating || role === "usuario"}
                     className="shrink-0 flex items-center gap-2 shadow-sm font-semibold h-11 px-6"
                 >
                     <Zap className={`w-5 h-5 fill-current ${generating ? "animate-pulse" : ""}`} />
                     {generating ? "Generando..." : `Generar Facturación (${mesActual})`}
                 </Button>
             </div>
+
+            {role === "usuario" && (
+                <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800">
+                    <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0 text-amber-600" />
+                    <div>
+                        <h4 className="font-semibold text-amber-900">Modo solo lectura</h4>
+                        <p className="text-sm mt-1">Estás en rol de usuario. No puedes generar facturaciones. Solo un administrador puede generar facturas y realizar modificaciones.</p>
+                    </div>
+                </div>
+            )}
 
             {/* Filtros */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">

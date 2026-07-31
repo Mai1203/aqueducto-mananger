@@ -18,6 +18,7 @@ import { generateNextNumeroMatricula } from "@/features/matriculas/utils";
 import { useUsuarios } from "@/features/usuarios/hooks";
 import { useCategories } from "@/features/categorias/hooks";
 import { useConfiguracionFacturacion } from "@/features/configuracion_facturacion/hooks";
+import { useAuth } from "@/features/auth/AuthContext";
 import Loading from "./loading";
 
 export default function MatriculasPage() {
@@ -26,6 +27,7 @@ export default function MatriculasPage() {
     const { categories, loading: loadingCategories } = useCategories();
     const { config, loading: loadingConfig, update: updateConfig } = useConfiguracionFacturacion();
     const { toast } = useToast();
+    const { role, loading: authLoading } = useAuth();
 
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
@@ -43,7 +45,7 @@ export default function MatriculasPage() {
     });
     const [configError, setConfigError] = useState<string | null>(null);
 
-    const loading = loadingMatriculas || loadingUsuarios || loadingCategories;
+    const loading = loadingMatriculas || loadingUsuarios || loadingCategories || authLoading;
 
     const activeCategories = useMemo(() => {
         return categories.filter((c) => c.activa);
@@ -263,7 +265,7 @@ export default function MatriculasPage() {
                     <p className="text-sm text-slate-500 mt-1">Gestiona las conexiones y suscripciones del acueducto.</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                    <Button onClick={() => openModal("create")} className="flex items-center gap-2">
+                    <Button onClick={() => openModal("create")} disabled={role === "usuario"} className="flex items-center gap-2">
                         <Plus className="w-4 h-4" />
                         Nueva Matrícula
                     </Button>
@@ -271,6 +273,7 @@ export default function MatriculasPage() {
                         variant="outline"
                         size="sm"
                         onClick={openConfigModal}
+                        disabled={role === "usuario"}
                         className="flex items-center gap-2"
                     >
                         <BadgeDollarSign className="w-4 h-4" />
@@ -278,6 +281,16 @@ export default function MatriculasPage() {
                     </Button>
                 </div>
             </div>
+
+            {role === "usuario" && (
+                <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800">
+                    <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0 text-amber-600" />
+                    <div>
+                        <h4 className="font-semibold text-amber-900">Modo solo lectura</h4>
+                        <p className="text-sm mt-1">Estás en rol de usuario. No puedes realizar modificaciones. Solo un administrador puede crear, editar o eliminar matrículas y cambiar la configuración.</p>
+                    </div>
+                </div>
+            )}
 
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
@@ -365,6 +378,7 @@ export default function MatriculasPage() {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => openModal("edit", mat)}
+                                    disabled={role === "usuario"}
                                     className="flex items-center gap-1.5 text-sky-600 border-slate-200 hover:bg-sky-50 hover:border-sky-200 text-xs h-8 px-3"
                                 >
                                     <Edit2 className="h-3.5 w-3.5" />
@@ -374,6 +388,7 @@ export default function MatriculasPage() {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => openModal("delete", mat)}
+                                    disabled={role === "usuario"}
                                     className="flex items-center gap-1.5 text-red-600 border-slate-200 hover:bg-red-50 hover:border-red-200 text-xs h-8 px-3"
                                 >
                                     <Trash2 className="h-3.5 w-3.5" />
@@ -428,6 +443,7 @@ export default function MatriculasPage() {
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => openModal("edit", mat)}
+                                            disabled={role === "usuario"}
                                             className="h-8 w-8 text-sky-600 hover:text-sky-700 hover:bg-sky-50"
                                         >
                                             <Edit2 className="h-4 w-4" />
@@ -436,6 +452,7 @@ export default function MatriculasPage() {
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => openModal("delete", mat)}
+                                            disabled={role === "usuario"}
                                             className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
                                         >
                                             <Trash2 className="h-4 w-4" />
@@ -606,7 +623,7 @@ export default function MatriculasPage() {
                             <Button type="button" variant="outline" onClick={closeModal}>
                                 Cancelar
                             </Button>
-                            <Button type="submit">
+                            <Button type="submit" disabled={role === "usuario"}>
                                 {modalMode === "create" ? "Registrar Matrícula" : "Guardar Cambios"}
                             </Button>
                         </div>
@@ -656,7 +673,7 @@ export default function MatriculasPage() {
                         <Button type="button" variant="outline" onClick={closeConfigModal}>
                             Cancelar
                         </Button>
-                        <Button type="submit">
+                        <Button type="submit" disabled={role === "usuario"}>
                             Guardar Configuración
                         </Button>
                     </div>
