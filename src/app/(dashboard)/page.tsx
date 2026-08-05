@@ -44,7 +44,6 @@ export default function Dashboard() {
         <MetricCard
           title="Total Recaudado (Mes)"
           value={`$ ${metrics?.totalRecaudado?.toLocaleString('es-CO')}`}
-          trend="+12%"
           isPositive={true}
           icon={DollarSign}
         />
@@ -52,7 +51,6 @@ export default function Dashboard() {
         <MetricCard
           title="Total Pendiente"
           value={`$ ${metrics?.totalPendiente?.toLocaleString('es-CO')}`}
-          trend="-2%"
           isPositive={true}
           icon={AlertCircle}
         />
