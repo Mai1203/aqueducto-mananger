@@ -8,7 +8,7 @@ import { useDashboard } from "@/features/dashboard/hooks";
 import Loading from "./loading";
 
 export default function Dashboard() {
-  const { metrics, pagos, pagosMensuales, loading, error, refetch } = useDashboard()
+  const { metrics, trends, pagos, pagosMensuales, loading, error, refetch } = useDashboard()
 
   if (loading) return <Loading />
 
@@ -44,26 +44,30 @@ export default function Dashboard() {
         <MetricCard
           title="Total Recaudado (Mes)"
           value={`$ ${metrics?.totalRecaudado?.toLocaleString('es-CO')}`}
-          isPositive={true}
+          trend={trends?.totalRecaudado ? `${trends.totalRecaudado.isPositive ? '+' : '-'}${trends.totalRecaudado.value}%` : undefined}
+          isPositive={trends?.totalRecaudado?.isPositive}
           icon={DollarSign}
         />
 
         <MetricCard
           title="Total Pendiente"
           value={`$ ${metrics?.totalPendiente?.toLocaleString('es-CO')}`}
-          isPositive={true}
+          trend={trends?.totalPendiente ? `${trends.totalPendiente.isPositive ? '+' : '-'}${trends.totalPendiente.value}%` : undefined}
+          isPositive={trends?.totalPendiente?.isPositive}
           icon={AlertCircle}
         />
         <MetricCard
           title="Facturas Vencidas"
           value={`${metrics?.facturasVencidas}`}
-          isPositive={false}
+          trend={trends?.facturasVencidas ? `${trends.facturasVencidas.isPositive ? '+' : '-'}${trends.facturasVencidas.value}%` : undefined}
+          isPositive={trends?.facturasVencidas?.isPositive}
           icon={FileText}
         />
         <MetricCard
           title="Usuarios Activos"
           value={`${metrics?.usuariosActivos}`}
-          isPositive={true}
+          trend={trends?.usuariosActivos ? `${trends.usuariosActivos.isPositive ? '+' : '-'}${trends.usuariosActivos.value}%` : undefined}
+          isPositive={trends?.usuariosActivos?.isPositive}
           icon={Users}
         />
       </div>

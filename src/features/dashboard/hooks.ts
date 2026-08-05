@@ -42,8 +42,11 @@ export function useDashboard() {
     queryClient.invalidateQueries({ queryKey: ["dashboard"] })
   }
 
+  const metricsData = metricsQuery.data || { metrics: null, trends: null }
+
   return {
-    metrics: metricsQuery.data || null,
+    metrics: metricsData.metrics,
+    trends: metricsData.trends,
     pagos: pagosQuery.data || [],
     pagosMensuales: mensualQuery.data || [],
     loading,

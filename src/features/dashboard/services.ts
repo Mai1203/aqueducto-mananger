@@ -1,11 +1,34 @@
 import { supabase } from "@/lib/supabaseClient"
-import { DashboardMetrics, UltimoPago } from "./types"
+import { DashboardMetrics, DashboardTrends, UltimoPago } from "./types"
 
-export async function getDashboardMetrics(): Promise<DashboardMetrics> {
+function getPreviousMonth() {
+  const today = new Date()
+  const prev = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+  const year = prev.getFullYear()
+  const month = String(prev.getMonth() + 1).padStart(2, "0")
+  const firstDay = `${year}-${month}-01`
+  const lastDay = new Date(year, prev.getMonth() + 1, 0).toISOString().split("T")[0]
+  return { firstDay, lastDay, monthKey: `${year}-${month}` }
+}
+
+function calculateTrend(current: number, previous: number): { value: number; isPositive: boolean } {
+  if (previous === 0) {
+    if (current === 0) return { value: 0, isPositive: true }
+    return { value: 100, isPositive: true }
+  }
+  const change = ((current - previous) / previous) * 100
+  return {
+    value: Math.abs(Math.round(change)),
+    isPositive: change >= 0,
+  }
+}
+
+export async function getDashboardMetrics(): Promise<{ metrics: DashboardMetrics; trends: DashboardTrends }> {
 
   const currentMonth = new Date().toISOString().slice(0, 7)
+  const prevMonth = getPreviousMonth()
 
-  // pagos del mes
+  // pagos del mes actual
   const { data: pagosMes, error: errorPagos } = await supabase
     .from("pagos")
     .select("valor_pagado, fecha_pago")
@@ -19,10 +42,25 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   const totalRecaudado =
     pagosMes?.reduce((sum, p) => sum + Number(p.valor_pagado), 0) || 0
 
-  // facturas pendientes
+  // pagos del mes anterior para comparación
+  const { data: pagosMesAnterior, error: errorPagosAnterior } = await supabase
+    .from("pagos")
+    .select("valor_pagado, fecha_pago")
+    .gte("fecha_pago", prevMonth.firstDay)
+    .lte("fecha_pago", prevMonth.lastDay)
+
+  if (errorPagosAnterior) {
+    console.error("Error obteniendo pagos del mes anterior:", errorPagosAnterior)
+    throw new Error("No se pudieron cargar los ingresos del mes anterior")
+  }
+
+  const totalRecaudadoAnterior =
+    pagosMesAnterior?.reduce((sum, p) => sum + Number(p.valor_pagado), 0) || 0
+
+  // facturas pendientes actuales
   const { data: pendientes, error: errorPendientes } = await supabase
     .from("facturas")
-    .select("total")
+    .select("total, fecha_generacion")
     .eq("estado", "pendiente")
 
   if (errorPendientes) {
@@ -33,8 +71,24 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   const totalPendiente =
     pendientes?.reduce((sum, f) => sum + Number(f.total), 0) || 0
 
+  // facturas pendientes del mes anterior para comparación
+  const { data: pendientesAnterior, error: errorPendientesAnterior } = await supabase
+    .from("facturas")
+    .select("total, fecha_generacion")
+    .eq("estado", "pendiente")
+    .gte("fecha_generacion", prevMonth.firstDay)
+    .lte("fecha_generacion", prevMonth.lastDay)
+
+  if (errorPendientesAnterior) {
+    console.error("Error obteniendo facturas pendientes del mes anterior:", errorPendientesAnterior)
+    throw new Error("No se pudieron cargar las facturas pendientes del mes anterior")
+  }
+
+  const totalPendienteAnterior =
+    pendientesAnterior?.reduce((sum, f) => sum + Number(f.total), 0) || 0
+
   // facturas vencidas (pendientes y con fecha_vencimiento pasada)
-  const today = new Date().toISOString().split("T")[0] // solo fecha YYYY-MM-DD
+  const today = new Date().toISOString().split("T")[0]
   const { count: facturasVencidas, error: errorVencidas } = await supabase
     .from("facturas")
     .select("*", { count: "exact", head: true })
@@ -44,6 +98,18 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   if (errorVencidas) {
     console.error("Error obteniendo facturas vencidas:", errorVencidas)
     throw new Error("No se pudieron cargar las facturas vencidas")
+  }
+
+  const fechaFinMesAnterior = prevMonth.lastDay
+  const { count: facturasVencidasAnterior, error: errorVencidasAnterior } = await supabase
+    .from("facturas")
+    .select("*", { count: "exact", head: true })
+    .eq("estado", "pendiente")
+    .lt("fecha_vencimiento", fechaFinMesAnterior)
+
+  if (errorVencidasAnterior) {
+    console.error("Error obteniendo facturas vencidas del mes anterior:", errorVencidasAnterior)
+    throw new Error("No se pudieron cargar las facturas vencidas del mes anterior")
   }
 
   // usuarios activos
@@ -57,12 +123,36 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     throw new Error("No se pudieron cargar los usuarios activos")
   }
 
+  const { count: usuariosActivosAnterior, error: errorUsuariosAnterior } = await supabase
+    .from("clientes")
+    .select("*", { count: "exact", head: true })
+    .eq("estado", "activo")
+    .lte("fecha_registro", fechaFinMesAnterior)
+
+  if (errorUsuariosAnterior) {
+    console.error("Error obteniendo usuarios activos del mes anterior:", errorUsuariosAnterior)
+    throw new Error("No se pudieron cargar los usuarios activos del mes anterior")
+  }
+
+  const trends: DashboardTrends = {
+    totalRecaudado: calculateTrend(totalRecaudado, totalRecaudadoAnterior),
+    totalPendiente: calculateTrend(totalPendiente, totalPendienteAnterior),
+    facturasVencidas: calculateTrend(facturasVencidas || 0, facturasVencidasAnterior || 0),
+    usuariosActivos: calculateTrend(usuariosActivos || 0, usuariosActivosAnterior || 0),
+  }
 
   return {
-    totalRecaudado,
-    totalPendiente,
-    facturasVencidas: facturasVencidas || 0,
-    usuariosActivos: usuariosActivos || 0,
+    metrics: {
+      totalRecaudado,
+      totalRecaudadoAnterior,
+      totalPendiente,
+      totalPendienteAnterior,
+      facturasVencidas: facturasVencidas || 0,
+      facturasVencidasAnterior: facturasVencidasAnterior || 0,
+      usuariosActivos: usuariosActivos || 0,
+      usuariosActivosAnterior: usuariosActivosAnterior || 0,
+    },
+    trends,
   }
 }
 
