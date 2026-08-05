@@ -135,10 +135,10 @@ export default function ReportesPage() {
             Analíticas y exportación de datos del acueducto.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
-            className="gap-2"
+            className="gap-2 w-full sm:w-auto"
             onClick={handleExportPDF}
             disabled={exportandoPDF || ingresos.length === 0}
           >
@@ -150,7 +150,7 @@ export default function ReportesPage() {
           </Button>
           <Button
             variant="outline"
-            className="gap-2"
+            className="gap-2 w-full sm:w-auto"
             onClick={handleExportExcel}
             disabled={exportandoExcel || ingresos.length === 0}
           >
@@ -162,11 +162,12 @@ export default function ReportesPage() {
           </Button>
           {role === "admin" && (
             <Button
-              className="gap-2"
+              className="gap-2 w-full sm:w-auto whitespace-nowrap"
               onClick={() => setModalAbierto(true)}
             >
               <FileText className="w-4 h-4" />
-              Generar Factura Empresarial
+              <span className="hidden sm:inline">Generar Factura Empresarial</span>
+              <span className="sm:hidden">Factura Empresarial</span>
             </Button>
           )}
         </div>
