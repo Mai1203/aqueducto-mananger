@@ -175,7 +175,7 @@ export async function exportarExcel(
 }
 
 export async function generarFacturaEmpresarialPDF(data: {
-  cliente: string
+  destinatario: string
   numero_matricula: string
   facturas: Factura[]
   total: number
@@ -191,9 +191,8 @@ export async function generarFacturaEmpresarialPDF(data: {
   })
 
   const empresaNombre = "Acueducto San Francisco"
-  const empresaNit = "NIT: 900.123.456-7"
+  const empresaNit = "NIT: 900.387.825-5"
   const empresaDireccion = "San Francisco Centro, Linares - Nariño"
-  const lugar = "San Francisco Centro"
 
   // Encabezado empresa
   doc.setFillColor(16, 185, 129)
@@ -205,22 +204,49 @@ export async function generarFacturaEmpresarialPDF(data: {
   doc.setFontSize(10)
   doc.setFont("helvetica", "normal")
   doc.text(`${empresaNit}  |  ${empresaDireccion}`, 14, 18)
-  doc.text(`Lugar y fecha: ${lugar}, ${fechaActual}`, 14, 26)
+  doc.text(`Fecha: ${fechaActual}`, 14, 26)
 
   doc.setTextColor(30, 41, 59)
+
+  const maxWidth = 182
+  let cursorY = 42
 
   // Destinatario
   doc.setFontSize(12)
   doc.setFont("helvetica", "bold")
-  doc.text("Factura a nombre de:", 14, 42)
+  doc.text("Señor(a):", 14, cursorY)
+  cursorY += 8
   doc.setFont("helvetica", "normal")
   doc.setFontSize(11)
-  doc.text(`${data.cliente}`, 14, 50)
-  doc.text(`Matrícula: ${data.numero_matricula}`, 14, 58)
+  const destinatarioLines = doc.splitTextToSize(data.destinatario, maxWidth)
+  doc.text(destinatarioLines, 14, cursorY)
+  cursorY += destinatarioLines.length * 6 + 8
+
+  // Asunto y cuerpo
+  doc.setFontSize(11)
+  doc.setFont("helvetica", "bold")
+  doc.text("Asunto: Solicitud de pago de factura por servicio de acueducto.", 14, cursorY)
+  cursorY += 10
+
+  doc.setFont("helvetica", "normal")
+  doc.setFontSize(10)
+  const cuerpo = [
+    "Cordial saludo,",
+    "",
+    "Por medio del presente, nos permitimos solicitar de manera atenta el pago de la factura correspondiente al servicio de acueducto prestado, la cual, de acuerdo con nuestros registros, se encuentra pendiente de pago.",
+    "",
+    "A continuación, se relaciona la información de la factura:",
+  ]
+
+  cuerpo.forEach((linea) => {
+    const lines = doc.splitTextToSize(linea, maxWidth)
+    doc.text(lines, 14, cursorY)
+    cursorY += lines.length * 5.5
+  })
 
   // Tabla de facturas
   autoTable(doc, {
-    startY: 66,
+    startY: cursorY + 6,
     head: [["# Factura", "Período", "Valor Base", "Recargo", "Descuento", "Total"]],
     body: data.facturas.map((f) => [
       f.id.slice(0, 8).toUpperCase(),
@@ -242,11 +268,23 @@ export async function generarFacturaEmpresarialPDF(data: {
     },
   })
 
-  const finalY = (doc as any).lastAutoTable.finalY + 12
+  let finalY = (doc as any).lastAutoTable.finalY + 12
 
   doc.setFontSize(12)
   doc.setFont("helvetica", "bold")
   doc.text(`Total a deber: $${data.total.toLocaleString("es-CO")}`, 14, finalY)
+
+  finalY += 24
+
+  doc.setFontSize(11)
+  doc.setFont("helvetica", "italic")
+  doc.text("Atentamente,", 14, finalY)
+
+  finalY += 30
+  doc.setDrawColor(30, 41, 59)
+  doc.setLineWidth(0.3)
+  doc.line(14, finalY, 90, finalY)
+  doc.line(110, finalY, 186, finalY)
 
   // Pie de página
   const pageCount = (doc as any).internal.getNumberOfPages()

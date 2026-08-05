@@ -54,6 +54,7 @@ export default function ReportesPage() {
   const [usuarioSeleccionado, setUsuarioSeleccionado] = useState("")
   const [matriculaSeleccionada, setMatriculaSeleccionada] = useState("")
   const [busquedaUsuario, setBusquedaUsuario] = useState("")
+  const [destinatario, setDestinatario] = useState("")
 
   const handleExportPDF = async () => {
     setExportandoPDF(true)
@@ -91,13 +92,13 @@ export default function ReportesPage() {
       }
 
       const matricula = matriculas.find((m) => m.id === matriculaSeleccionada)
-      const clienteNombre = matricula?.cliente?.nombre || usuarios.find((u) => u.id === matricula?.cliente_id)?.nombre || "Cliente sin nombre"
+      const clienteNombre = destinatario.trim() || matricula?.cliente?.nombre || usuarios.find((u) => u.id === matricula?.cliente_id)?.nombre || "Cliente sin nombre"
       const numeroMatricula = matricula?.numero_matricula || "Sin número"
 
       const total = facturas.reduce((sum, f) => sum + Number(f.total), 0)
 
       await generarFacturaEmpresarialPDF({
-        cliente: clienteNombre,
+        destinatario: clienteNombre,
         numero_matricula: numeroMatricula,
         facturas,
         total,
@@ -108,6 +109,7 @@ export default function ReportesPage() {
       setUsuarioSeleccionado("")
       setMatriculaSeleccionada("")
       setBusquedaUsuario("")
+      setDestinatario("")
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error al generar la factura empresarial."
       toast({ type: "error", title: "Error", description: msg })
@@ -271,6 +273,17 @@ export default function ReportesPage() {
           ) : (
             <>
               <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Dirigido a</label>
+                <input
+                  type="text"
+                  placeholder="Nombre del destinatario o empresa..."
+                  className="w-full h-10 px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-shadow"
+                  value={destinatario}
+                  onChange={(e) => setDestinatario(e.target.value)}
+                />
+                <p className="text-xs text-slate-400 mt-1">Si lo dejas vacío, se usará el nombre del usuario registrado.</p>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Matrícula</label>
                 <select
                   className="w-full h-10 px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-shadow"
@@ -293,7 +306,7 @@ export default function ReportesPage() {
                   Volver
                 </Button>
                 <div className="flex gap-2">
-                  <Button type="button" variant="outline" onClick={() => { setModalAbierto(false); setUsuarioSeleccionado(""); setMatriculaSeleccionada(""); setBusquedaUsuario(""); }}>
+                  <Button type="button" variant="outline" onClick={() => { setModalAbierto(false); setUsuarioSeleccionado(""); setMatriculaSeleccionada(""); setBusquedaUsuario(""); setDestinatario(""); }}>
                     Cancelar
                   </Button>
                   <Button onClick={handleGenerarFacturaEmpresarial} disabled={generandoFactura || !matriculaSeleccionada}>
